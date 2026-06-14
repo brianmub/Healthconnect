@@ -1,0 +1,23 @@
+{
+  "name": "healthconnect-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/backend",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" --names \"backend,frontend\" --prefix-colors \"cyan,magenta\"",
+    "dev:backend": "npm run dev --workspace=packages/backend",
+    "dev:frontend": "npm run dev --workspace=packages/frontend",
+    "build:backend": "npm run build --workspace=packages/backend",
+    "build:frontend": "npm run build --workspace=packages/frontend",
+    "prisma:generate": "npm run prisma:generate --workspace=packages/backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace=packages/backend",
+    "prisma:seed": "npm run prisma:seed --workspace=packages/backend",
+    "install:all": "npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

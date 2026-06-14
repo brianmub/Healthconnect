@@ -1,0 +1,134 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String             @id @default(cuid())
+  name          String
+  email         String             @unique
+  passwordHash  String
+  role          String             @default("STAFF") // "ADMIN", "STAFF"
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  campaigns     Campaign[]
+  messagesSent  MessageRecipient[]
+}
+
+model Patient {
+  id                String             @id @default(cuid())
+  firstName         String
+  lastName          String
+  phone             String             @unique
+  whatsapp          String?
+  email             String?
+  dateOfBirth       DateTime?
+  optedOut          Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  appointments      Appointment[]
+  messageRecipients MessageRecipient[]
+  tags              PatientTag[]
+}
+
+model PatientTag {
+  id        String   @id @default(cuid())
+  name      String
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([name, patientId])
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  patientId String
+  patient   Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  dateTime  DateTime
+  duration  Int               // minutes
+  type      String            // "checkup", "filling", "cleaning", etc.
+  status    String            @default("SCHEDULED") // "SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"
+  notes     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+model MessageTemplate {
+  id          String           @id @default(cuid())
+  name        String
+  body        String           // supports: {{firstName}}, {{lastName}}, {{appointmentDate}}, {{appointmentTime}}, {{clinicName}}, {{clinicPhone}}
+  channel     String           // "SMS", "WHATSAPP", "BOTH"
+  category    String           // "REMINDER", "CONFIRMATION", "FOLLOW_UP", "PROMOTION", "GENERAL", "MISSED_APPOINTMENT"
+  createdAt   DateTime         @default(now())
+  campaigns   Campaign[]
+  automations AutomationRule[]
+}
+
+model Campaign {
+  id          String             @id @default(cuid())
+  name        String
+  templateId  String
+  template    MessageTemplate    @relation(fields: [templateId], references: [id])
+  channel     String             // "SMS", "WHATSAPP", "BOTH"
+  status      String             @default("DRAFT") // "DRAFT", "SCHEDULED", "SENDING", "SENT", "FAILED", "PAUSED"
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id])
+  recipients  MessageRecipient[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model MessageRecipient {
+  id          String         @id @default(cuid())
+  campaignId  String
+  campaign    Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  phone       String
+  status      String         @default("PENDING") // "PENDING", "QUEUED", "SENT", "DELIVERED", "FAILED", "UNDELIVERED", "OPT_OUT"
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  failReason  String?
+  externalId  String?        // Twilio message SID
+  senderId    String?        // Who triggered this
+  sender      User?          @relation(fields: [senderId], references: [id])
+  createdAt   DateTime       @default(now())
+}
+
+model AutomationRule {
+  id          String            @id @default(cuid())
+  name        String
+  trigger     String            // "APPOINTMENT_REMINDER", "APPOINTMENT_CONFIRMATION", "POST_APPOINTMENT_FOLLOWUP", "MISSED_APPOINTMENT", "RECALL_REMINDER"
+  offsetHours Int               // e.g. -24 means 24 hours before appointment
+  channel     String            // "SMS", "WHATSAPP", "BOTH"
+  templateId  String
+  template    MessageTemplate   @relation(fields: [templateId], references: [id])
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+}
+
+model Setting {
+  id                  String   @id @default("global")
+  clinicName          String   @default("SmileCare Dental Practice")
+  clinicPhone         String   @default("+263771234567")
+  clinicAddress       String   @default("123 Samora Machel Ave, Harare")
+  clinicLogo          String?
+  twilioAccountSid    String?
+  twilioAuthToken     String?
+  twilioPhoneNumber   String?
+  twilioWhatsappNumber String?
+  metaWhatsappPhoneId  String?
+  metaWhatsappToken   String?
+  atApiKey            String?
+  atUsername          String?
+  atSenderId          String?
+  defaultCountryCode  String   @default("ZW")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
