@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
+import { api } from '../../services/api';
 import {
   LayoutDashboard,
   Users,
@@ -14,7 +16,8 @@ import {
   Menu,
   X,
   Bell,
-  Activity
+  Activity,
+  CreditCard
 } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,6 +26,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+
+  // Live SMS credit balance (polls every 5 minutes)
+  const { data: balanceData } = useQuery({
+    queryKey: ['sms-balance'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/settings/sms/balance');
+      return data;
+    },
+    refetchInterval: 5 * 60 * 1000, // 5 min
+    staleTime: 60 * 1000,
+  });
+
+  const credits: number | null = balanceData?.sms_credits ?? null;
+  const creditColor =
+    credits === null
+      ? 'text-slate-500 bg-slate-800/60 border-slate-700/40'
+      : credits >= 100
+      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+      : credits >= 20
+      ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+      : 'text-red-400 bg-red-500/10 border-red-500/20 animate-pulse';
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -79,6 +103,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* User Card */}
         <div className="p-4 border-t border-slate-800/60 bg-slate-900/20">
+          {/* SMS Credit Pill */}
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border mb-3 ${creditColor}`}>
+            <CreditCard className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[11px] font-semibold">
+              {credits !== null ? `${credits.toLocaleString()} SMS credits` : 'Credits: N/A'}
+            </span>
+          </div>
           <div className="flex items-center gap-3 mb-3">
             <div className="h-9 w-9 rounded-full bg-primary-500/10 flex items-center justify-center border border-primary-500/20">
               <span className="text-sm font-semibold text-primary-500 uppercase">

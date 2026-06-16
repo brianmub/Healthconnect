@@ -3,6 +3,7 @@ import { SendResult, SmsProvider, WhatsappProvider } from './types';
 import { TwilioProvider } from './providers/twilio';
 import { AfricasTalkingProvider } from './providers/africasTalking';
 import { MetaWhatsappProvider } from './providers/metaWhatsapp';
+import { SmsLocalhostProvider } from './providers/smsLocalhost';
 import { validateAndNormalizePhone } from '../utils/phoneValidation';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
@@ -11,6 +12,7 @@ import IORedis from 'ioredis';
 const twilioProvider = new TwilioProvider();
 const africasTalkingProvider = new AfricasTalkingProvider();
 const metaWhatsappProvider = new MetaWhatsappProvider();
+const smsLocalhostProvider = new SmsLocalhostProvider();
 
 export class MessagingService {
   private redisConnection: IORedis | null = null;
@@ -34,10 +36,14 @@ export class MessagingService {
   }
 
   // Retrieve active SMS provider based on SMS_PROVIDER env variable
+  // Supported values: 'twilio' | 'africasTalking' | 'smsLocalhost'
   private getSmsProvider(): SmsProvider {
     const activeSmsGateway = process.env.SMS_PROVIDER || 'twilio';
     if (activeSmsGateway === 'africasTalking') {
       return africasTalkingProvider;
+    }
+    if (activeSmsGateway === 'smsLocalhost') {
+      return smsLocalhostProvider;
     }
     return twilioProvider;
   }

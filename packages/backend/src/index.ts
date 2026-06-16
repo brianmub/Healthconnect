@@ -16,6 +16,7 @@ import automationRoutes from './routes/automation';
 import analyticsRoutes from './routes/analytics';
 import settingsRoutes from './routes/settings';
 import webhookRoutes from './routes/webhooks';
+import deliveryRoutes from './routes/delivery';
 
 import { startAutomationCron } from './workers/automationWorker';
 
@@ -49,7 +50,22 @@ const authLimiter = rateLimit({
 // Apply general limiter to all routes
 app.use(generalLimiter);
 
-// 3. Body parsers (skip parsing raw bodies for webhooks if raw body parsing is needed, else standard JSON)
+// 3. Body parsers
+// Capture raw body for SMS Localhost webhook HMAC verification BEFORE JSON parsing
+app.use((req, _res, next) => {
+  if (req.path.startsWith('/api/webhooks/sms-localhost')) {
+    let data = Buffer.alloc(0);
+    req.on('data', (chunk: Buffer) => { data = Buffer.concat([data, chunk]); });
+    req.on('end', () => {
+      (req as any).rawBody = data;
+      // Now parse the JSON body manually so the rest of the app works
+      try { (req as any).body = JSON.parse(data.toString()); } catch { (req as any).body = {}; }
+      next();
+    });
+  } else {
+    next();
+  }
+});
 app.use(express.json());
 
 // 4. Mount Routes
@@ -61,7 +77,9 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/delivery', deliveryRoutes);
 app.use('/api/webhooks/twilio', webhookRoutes);
+app.use('/api/webhooks/sms-localhost', webhookRoutes);
 
 // Simple healthcheck
 app.get('/health', (req, res) => {

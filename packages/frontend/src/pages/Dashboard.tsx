@@ -23,7 +23,8 @@ import {
   ChevronRight,
   TrendingUp,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -76,6 +77,18 @@ export default function Dashboard() {
         .slice(0, 10);
     }
   });
+
+  // Reuse the same query key as AppLayout so it shares the cache (no extra request)
+  const { data: balanceData } = useQuery({
+    queryKey: ['sms-balance'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/settings/sms/balance');
+      return data;
+    },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+  });
+  const smsCredits: number | null = balanceData?.sms_credits ?? null;
 
   // Quick reminder mutation
   const sendReminderMutation = useMutation({
@@ -184,6 +197,33 @@ export default function Dashboard() {
           </div>
           <div className="h-12 w-12 rounded-xl bg-warning-500/10 border border-warning-500/20 flex items-center justify-center text-warning-500">
             <Calendar className="h-6 w-6" />
+          </div>
+        </Card>
+
+        {/* KPI 5 – SMS Credits */}
+        <Card className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">SMS Credits</p>
+            <h3 className={`text-3xl font-bold mt-2 ${
+              smsCredits === null ? 'text-slate-500' : smsCredits >= 100 ? 'text-emerald-400' : smsCredits >= 20 ? 'text-amber-400' : 'text-red-400'
+            }`}>
+              {smsCredits !== null ? smsCredits.toLocaleString() : '—'}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+              <CreditCard className="h-3 w-3 text-primary-500" />
+              {smsCredits === null ? 'SMS Localhost not active' : smsCredits < 20 ? 'Low — top up soon!' : 'Remaining balance'}
+            </p>
+          </div>
+          <div className={`h-12 w-12 rounded-xl flex items-center justify-center border ${
+            smsCredits === null
+              ? 'bg-slate-800/40 border-slate-700/30 text-slate-500'
+              : smsCredits >= 100
+              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              : smsCredits >= 20
+              ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+              : 'bg-red-500/10 border-red-500/20 text-red-400'
+          }`}>
+            <CreditCard className="h-6 w-6" />
           </div>
         </Card>
       </div>

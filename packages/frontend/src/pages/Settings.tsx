@@ -106,6 +106,8 @@ export default function Settings() {
       twilioAccountSid: data.get('twilioAccountSid'),
       twilioAuthToken: data.get('twilioAuthToken'),
       twilioPhoneNumber: data.get('twilioPhoneNumber'),
+      smsLocalhostApiKey: data.get('smsLocalhostApiKey'),
+      smsLocalhostSenderId: data.get('smsLocalhostSenderId'),
     };
     updateSettingsMutation.mutate(payload);
   };
@@ -210,20 +212,65 @@ export default function Settings() {
 
           {/* 2. SMS Gateway settings */}
           {activeTab === 'sms' && (
-            <Card>
-              <h3 className="text-sm font-bold text-slate-200 mb-4 uppercase tracking-wider">Twilio SMS Configuration</h3>
-              <form onSubmit={handleSmsSubmit} className="space-y-4">
-                <Input label="Twilio Account SID" name="twilioAccountSid" defaultValue={settings?.twilioAccountSid} />
-                <Input label="Twilio Auth Token" name="twilioAuthToken" type="password" placeholder="••••••••••••••••" />
-                <Input label="Twilio Outbound Phone Number" name="twilioPhoneNumber" defaultValue={settings?.twilioPhoneNumber} />
-                
-                <div className="pt-3 border-t border-slate-900 flex justify-end">
-                  <Button variant="primary" type="submit" isLoading={updateSettingsMutation.isPending}>
-                    <Save className="h-4 w-4 mr-1.5" /> Save SMS config
-                  </Button>
+            <form onSubmit={handleSmsSubmit} className="space-y-4">
+              {/* SMS Localhost card */}
+              <Card className="border-primary-800/40 bg-primary-950/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary-500/20 text-primary-400">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">SMS Localhost</h3>
+                    <p className="text-[10px] text-slate-500">sms.localhost.co.zw — recommended for Zimbabwe</p>
+                  </div>
+                  <span className="ml-auto text-[10px] font-bold text-primary-400 bg-primary-500/10 border border-primary-700/40 px-2 py-0.5 rounded">Active Provider</span>
                 </div>
-              </form>
-            </Card>
+                <div className="space-y-4">
+                  <Input
+                    label="API Key"
+                    name="smsLocalhostApiKey"
+                    type="password"
+                    defaultValue={settings?.smsLocalhostApiKey || ''}
+                    placeholder="••••••••••••••••"
+                  />
+                  <Input
+                    label="Sender ID (3–11 alphanumeric chars, must be approved)"
+                    name="smsLocalhostSenderId"
+                    defaultValue={settings?.smsLocalhostSenderId || ''}
+                    placeholder="e.g. HealthConn"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Set <code className="bg-slate-800 px-1 rounded">SMS_PROVIDER=smsLocalhost</code> in your <code className="bg-slate-800 px-1 rounded">.env</code> to activate.
+                    Get your API key from your{' '}
+                    <a href="https://sms.localhost.co.zw" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:underline">SMS Localhost dashboard</a>.
+                  </p>
+                </div>
+              </Card>
+
+              {/* Twilio fallback card */}
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-slate-700/50 text-slate-400">
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Twilio SMS</h3>
+                    <p className="text-[10px] text-slate-500">Set <code className="bg-slate-800 px-1 rounded">SMS_PROVIDER=twilio</code> to use this provider</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Input label="Twilio Account SID" name="twilioAccountSid" defaultValue={settings?.twilioAccountSid} />
+                  <Input label="Twilio Auth Token" name="twilioAuthToken" type="password" placeholder="••••••••••••••••" />
+                  <Input label="Twilio Outbound Phone Number" name="twilioPhoneNumber" defaultValue={settings?.twilioPhoneNumber} />
+                </div>
+              </Card>
+
+              <div className="pt-1 flex justify-end">
+                <Button variant="primary" type="submit" isLoading={updateSettingsMutation.isPending}>
+                  <Save className="h-4 w-4 mr-1.5" /> Save SMS config
+                </Button>
+              </div>
+            </form>
           )}
 
           {/* 3. WhatsApp Integration settings */}

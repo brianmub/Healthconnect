@@ -41,6 +41,8 @@ export async function updateSettings(req: Request, res: Response) {
     atApiKey,
     atUsername,
     atSenderId,
+    smsLocalhostApiKey,
+    smsLocalhostSenderId,
     defaultCountryCode,
   } = req.body;
 
@@ -71,6 +73,8 @@ export async function updateSettings(req: Request, res: Response) {
         atApiKey,
         atUsername,
         atSenderId,
+        smsLocalhostApiKey,
+        smsLocalhostSenderId,
         defaultCountryCode,
       },
       create: {
@@ -88,6 +92,8 @@ export async function updateSettings(req: Request, res: Response) {
         atApiKey,
         atUsername,
         atSenderId,
+        smsLocalhostApiKey,
+        smsLocalhostSenderId,
         defaultCountryCode: defaultCountryCode || 'ZW',
       },
     });
@@ -148,3 +154,33 @@ export async function testWhatsapp(req: Request, res: Response) {
     res.status(500).json({ error: err.message || 'Error occurred while sending test WhatsApp message' });
   }
 }
+
+export async function getSmsBalance(req: Request, res: Response) {
+  const apiKey = process.env.SMS_LOCALHOST_API_KEY || '';
+
+  // Return a clear signal when the provider is not SMS Localhost or key is missing
+  if (!apiKey || apiKey.startsWith('your_') || apiKey.includes('xxxx')) {
+    return res.json({ sms_credits: null, provider: process.env.SMS_PROVIDER || 'twilio', error: 'SMS Localhost API key not configured' });
+  }
+
+  try {
+    const response = await fetch('https://sms.localhost.co.zw/api/v1/billing/balance/', {
+      headers: { 'X-API-KEY': apiKey },
+    });
+
+    if (!response.ok) {
+      const errBody: any = await response.json().catch(() => ({}));
+      return res.status(response.status).json({
+        sms_credits: null,
+        error: errBody?.error || `SMS Localhost returned HTTP ${response.status}`,
+      });
+    }
+
+    const data: any = await response.json();
+    return res.json({ sms_credits: data?.sms_credits ?? data?.balance ?? null, provider: 'smsLocalhost' });
+  } catch (err: any) {
+    console.error('getSmsBalance error:', err);
+    return res.status(500).json({ sms_credits: null, error: err.message || 'Failed to fetch SMS credit balance' });
+  }
+}
+

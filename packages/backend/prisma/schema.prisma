@@ -114,21 +114,24 @@ model AutomationRule {
 }
 
 model Setting {
-  id                  String   @id @default("global")
-  clinicName          String   @default("SmileCare Dental Practice")
-  clinicPhone         String   @default("+263771234567")
-  clinicAddress       String   @default("123 Samora Machel Ave, Harare")
-  clinicLogo          String?
-  twilioAccountSid    String?
-  twilioAuthToken     String?
-  twilioPhoneNumber   String?
+  id                   String   @id @default("global")
+  clinicName           String   @default("SmileCare Dental Practice")
+  clinicPhone          String   @default("+263771234567")
+  clinicAddress        String   @default("123 Samora Machel Ave, Harare")
+  clinicLogo           String?
+  twilioAccountSid     String?
+  twilioAuthToken      String?
+  twilioPhoneNumber    String?
   twilioWhatsappNumber String?
   metaWhatsappPhoneId  String?
-  metaWhatsappToken   String?
-  atApiKey            String?
-  atUsername          String?
-  atSenderId          String?
-  defaultCountryCode  String   @default("ZW")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  metaWhatsappToken    String?
+  atApiKey             String?
+  atUsername           String?
+  atSenderId           String?
+  // SMS Localhost (sms.localhost.co.zw) credentials
+  smsLocalhostApiKey   String?
+  smsLocalhostSenderId String?
+  defaultCountryCode   String   @default("ZW")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
