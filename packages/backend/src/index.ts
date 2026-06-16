@@ -16,7 +16,6 @@ import automationRoutes from './routes/automation';
 import analyticsRoutes from './routes/analytics';
 import settingsRoutes from './routes/settings';
 import webhookRoutes from './routes/webhooks';
-import deliveryRoutes from './routes/delivery';
 
 import { startAutomationCron } from './workers/automationWorker';
 
@@ -77,7 +76,6 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/delivery', deliveryRoutes);
 app.use('/api/webhooks/twilio', webhookRoutes);
 app.use('/api/webhooks/sms-localhost', webhookRoutes);
 

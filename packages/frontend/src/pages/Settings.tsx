@@ -103,9 +103,6 @@ export default function Settings() {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const payload = {
-      twilioAccountSid: data.get('twilioAccountSid'),
-      twilioAuthToken: data.get('twilioAuthToken'),
-      twilioPhoneNumber: data.get('twilioPhoneNumber'),
       smsLocalhostApiKey: data.get('smsLocalhostApiKey'),
       smsLocalhostSenderId: data.get('smsLocalhostSenderId'),
     };
@@ -247,24 +244,6 @@ export default function Settings() {
                 </div>
               </Card>
 
-              {/* Twilio fallback card */}
-              <Card>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-slate-700/50 text-slate-400">
-                    <Smartphone className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Twilio SMS</h3>
-                    <p className="text-[10px] text-slate-500">Set <code className="bg-slate-800 px-1 rounded">SMS_PROVIDER=twilio</code> to use this provider</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <Input label="Twilio Account SID" name="twilioAccountSid" defaultValue={settings?.twilioAccountSid} />
-                  <Input label="Twilio Auth Token" name="twilioAuthToken" type="password" placeholder="••••••••••••••••" />
-                  <Input label="Twilio Outbound Phone Number" name="twilioPhoneNumber" defaultValue={settings?.twilioPhoneNumber} />
-                </div>
-              </Card>
-
               <div className="pt-1 flex justify-end">
                 <Button variant="primary" type="submit" isLoading={updateSettingsMutation.isPending}>
                   <Save className="h-4 w-4 mr-1.5" /> Save SMS config
@@ -283,7 +262,7 @@ export default function Settings() {
                   <span className="block text-xs font-bold text-slate-400 mb-2 uppercase">Meta Cloud API (Alternative Stub)</span>
                   <div className="grid grid-cols-2 gap-4">
                     <Input label="Meta WhatsApp Phone ID" name="metaWhatsappPhoneId" defaultValue={settings?.metaWhatsappPhoneId || ''} />
-                    <Input label="Meta WhatsApp API Token" name="metaWhatsappToken" type="password" placeholder="••••••••" />
+                    <Input label="Meta WhatsApp API Token" name="metaWhatsappToken" type="password" defaultValue={settings?.metaWhatsappToken || ''} placeholder="••••••••" />
                   </div>
                 </div>
                 

@@ -57,26 +57,35 @@ export async function updateSettings(req: Request, res: Response) {
       normalizedPhone = validated;
     }
 
+    // Build a sparse update object — only include fields that were explicitly
+    // sent in the request body (not undefined) AND are non-empty strings.
+    // This prevents one settings form from overwriting/clearing fields that
+    // belong to a different form (e.g. submitting the SMS form should not
+    // clear the WhatsApp token).
+    const sparse = (value: any) =>
+      value !== undefined && value !== '' ? value : undefined;
+
+    const updateData: Record<string, any> = {};
+    if (sparse(clinicName) !== undefined)           updateData.clinicName           = clinicName;
+    if (normalizedPhone !== undefined)              updateData.clinicPhone          = normalizedPhone;
+    if (sparse(clinicAddress) !== undefined)        updateData.clinicAddress        = clinicAddress;
+    if (sparse(clinicLogo) !== undefined)           updateData.clinicLogo           = clinicLogo;
+    if (sparse(twilioAccountSid) !== undefined)     updateData.twilioAccountSid     = twilioAccountSid;
+    if (sparse(twilioAuthToken) !== undefined)      updateData.twilioAuthToken      = twilioAuthToken;
+    if (sparse(twilioPhoneNumber) !== undefined)    updateData.twilioPhoneNumber    = twilioPhoneNumber;
+    if (sparse(twilioWhatsappNumber) !== undefined) updateData.twilioWhatsappNumber = twilioWhatsappNumber;
+    if (sparse(metaWhatsappPhoneId) !== undefined)  updateData.metaWhatsappPhoneId  = metaWhatsappPhoneId;
+    if (sparse(metaWhatsappToken) !== undefined)    updateData.metaWhatsappToken    = metaWhatsappToken;
+    if (sparse(atApiKey) !== undefined)             updateData.atApiKey             = atApiKey;
+    if (sparse(atUsername) !== undefined)           updateData.atUsername           = atUsername;
+    if (sparse(atSenderId) !== undefined)           updateData.atSenderId           = atSenderId;
+    if (sparse(smsLocalhostApiKey) !== undefined)   updateData.smsLocalhostApiKey   = smsLocalhostApiKey;
+    if (sparse(smsLocalhostSenderId) !== undefined) updateData.smsLocalhostSenderId = smsLocalhostSenderId;
+    if (sparse(defaultCountryCode) !== undefined)   updateData.defaultCountryCode   = defaultCountryCode;
+
     const settings = await prisma.setting.upsert({
       where: { id: 'global' },
-      update: {
-        clinicName,
-        clinicPhone: normalizedPhone,
-        clinicAddress,
-        clinicLogo,
-        twilioAccountSid,
-        twilioAuthToken,
-        twilioPhoneNumber,
-        twilioWhatsappNumber,
-        metaWhatsappPhoneId,
-        metaWhatsappToken,
-        atApiKey,
-        atUsername,
-        atSenderId,
-        smsLocalhostApiKey,
-        smsLocalhostSenderId,
-        defaultCountryCode,
-      },
+      update: updateData,
       create: {
         id: 'global',
         clinicName: clinicName || 'SmileCare Dental Practice',
@@ -118,6 +127,12 @@ export async function testSms(req: Request, res: Response) {
   }
 
   try {
+    // Sync credentials saved in the DB into process.env so the provider
+    // picks them up even if they were never set in the .env file.
+    const settings = await prisma.setting.findUnique({ where: { id: 'global' } });
+    if (settings?.smsLocalhostApiKey)   process.env.SMS_LOCALHOST_API_KEY   = settings.smsLocalhostApiKey;
+    if (settings?.smsLocalhostSenderId) process.env.SMS_LOCALHOST_SENDER_ID = settings.smsLocalhostSenderId;
+
     const result = await messagingService.sendSms(normalizedPhone, message);
     if (result.status === 'failed') {
       return res.status(500).json({ error: result.error || 'Failed to send test SMS' });
@@ -156,7 +171,9 @@ export async function testWhatsapp(req: Request, res: Response) {
 }
 
 export async function getSmsBalance(req: Request, res: Response) {
-  const apiKey = process.env.SMS_LOCALHOST_API_KEY || '';
+  // Prefer the key stored in the DB (saved via Settings UI) over the .env value
+  const settings = await prisma.setting.findUnique({ where: { id: 'global' } }).catch(() => null);
+  const apiKey = settings?.smsLocalhostApiKey || process.env.SMS_LOCALHOST_API_KEY || '';
 
   // Return a clear signal when the provider is not SMS Localhost or key is missing
   if (!apiKey || apiKey.startsWith('your_') || apiKey.includes('xxxx')) {
