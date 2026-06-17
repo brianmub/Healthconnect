@@ -12,6 +12,10 @@ export async function getAppointments(req: Request, res: Response) {
       where.patientId = patientId as string;
     }
 
+    if (req.query.providerId) {
+      where.providerId = req.query.providerId as string;
+    }
+
     if (status) {
       where.status = status as any;
     }
@@ -31,7 +35,8 @@ export async function getAppointments(req: Request, res: Response) {
       include: {
         patient: {
           select: { id: true, firstName: true, lastName: true, phone: true, email: true, whatsapp: true, optedOut: true }
-        }
+        },
+        provider: true
       },
       orderBy: { dateTime: 'asc' },
     });
@@ -44,7 +49,7 @@ export async function getAppointments(req: Request, res: Response) {
 }
 
 export async function createAppointment(req: Request, res: Response) {
-  const { patientId, dateTime, duration, type, status, notes } = req.body;
+  const { patientId, providerId, dateTime, duration, type, status, notes } = req.body;
 
   try {
     const patient = await prisma.patient.findUnique({ where: { id: patientId } });
@@ -55,6 +60,7 @@ export async function createAppointment(req: Request, res: Response) {
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
+        providerId: providerId || null,
         dateTime: new Date(dateTime),
         duration: parseInt(duration, 10),
         type,
@@ -129,7 +135,7 @@ export async function createAppointment(req: Request, res: Response) {
 
 export async function updateAppointment(req: Request, res: Response) {
   const { id } = req.params;
-  const { dateTime, duration, type, status, notes } = req.body;
+  const { dateTime, duration, type, status, notes, providerId } = req.body;
 
   try {
     const appointment = await prisma.appointment.update({
@@ -137,6 +143,7 @@ export async function updateAppointment(req: Request, res: Response) {
       data: {
         dateTime: dateTime ? new Date(dateTime) : undefined,
         duration: duration ? parseInt(duration, 10) : undefined,
+        providerId: providerId !== undefined ? providerId : undefined,
         type,
         status,
         notes,

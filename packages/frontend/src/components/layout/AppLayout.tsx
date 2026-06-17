@@ -54,6 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: 'Campaigns', href: '/campaigns', icon: Send },
     { name: 'Templates', href: '/templates', icon: FileCode },
     { name: 'Appointments', href: '/appointments', icon: Calendar },
+    { name: 'Providers', href: '/providers', icon: Users },
     { name: 'Automation', href: '/automation', icon: Zap },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/settings', icon: Settings },

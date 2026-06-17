@@ -71,7 +71,18 @@ export async function getPatientById(req: Request, res: Response) {
       where: { id },
       include: {
         tags: true,
+        medicalConditions: true,
+        allergies: true,
+        clinicalNotes: {
+          include: { provider: true, appointment: true },
+          orderBy: { createdAt: 'desc' }
+        },
+        invoices: {
+          include: { payments: true },
+          orderBy: { issueDate: 'desc' }
+        },
         appointments: {
+          include: { provider: true },
           orderBy: { dateTime: 'desc' },
         },
         messageRecipients: {

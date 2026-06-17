@@ -33,6 +33,10 @@ model Patient {
   appointments      Appointment[]
   messageRecipients MessageRecipient[]
   tags              PatientTag[]
+  medicalConditions MedicalCondition[]
+  allergies         Allergy[]
+  clinicalNotes     ClinicalNote[]
+  invoices          Invoice[]
 }
 
 model PatientTag {
@@ -48,6 +52,8 @@ model Appointment {
   id        String            @id @default(cuid())
   patientId String
   patient   Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  providerId String?
+  provider   Provider?        @relation(fields: [providerId], references: [id])
   dateTime  DateTime
   duration  Int               // minutes
   type      String            // "checkup", "filling", "cleaning", etc.
@@ -55,6 +61,8 @@ model Appointment {
   notes     String?
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
+  clinicalNotes ClinicalNote[]
+  invoice   Invoice?
 }
 
 model MessageTemplate {
@@ -134,4 +142,91 @@ model Setting {
   defaultCountryCode   String   @default("ZW")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+}
+
+model Provider {
+  id             String         @id @default(cuid())
+  firstName      String
+  lastName       String
+  specialization String?
+  email          String?
+  phone          String?
+  color          String?        @default("#3b82f6") // For calendar
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  appointments   Appointment[]
+  clinicalNotes  ClinicalNote[]
+}
+
+model MedicalCondition {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  condition   String
+  diagnosedAt DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model Allergy {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  allergen    String
+  severity    String   @default("MODERATE") // "MILD", "MODERATE", "SEVERE"
+  createdAt   DateTime @default(now())
+}
+
+model ClinicalNote {
+  id            String       @id @default(cuid())
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  providerId    String?
+  provider      Provider?    @relation(fields: [providerId], references: [id])
+  content       String
+  attachments   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Invoice {
+  id            String       @id @default(cuid())
+  invoiceNumber String       @unique
+  patientId     String
+  patient       Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  status        String       @default("DRAFT") // "DRAFT", "ISSUED", "PAID", "VOID"
+  subtotal      Float        @default(0)
+  tax           Float        @default(0)
+  total         Float        @default(0)
+  issueDate     DateTime     @default(now())
+  dueDate       DateTime?
+  lineItems     InvoiceItem[]
+  payments      Payment[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  total       Float
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount      Float
+  method      String   // "CASH", "CARD", "TRANSFER", "INSURANCE"
+  reference   String?
+  paymentDate DateTime @default(now())
+  createdAt   DateTime @default(now())
 }

@@ -5,23 +5,28 @@ import { Card, Badge, Button, Input, Modal, Select, Textarea, Spinner } from '..
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as zod from 'zod';
-import {
-  Calendar as CalendarIcon,
-  List,
-  Plus,
-  ChevronLeft,
-  ChevronRight,
-  Send,
-  Trash2,
-  Clock,
-  Briefcase
-} from 'lucide-react';
+import { Calendar as CalendarIcon, List, Plus, Trash2, Send, Clock, User as UserIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay } from 'date-fns';
+import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { enUS } from 'date-fns/locale';
 
-// Appointment Validation Schema
+// Setup react-big-calendar localizer
+const locales = {
+  'en-US': enUS,
+};
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
+
 const appointmentSchema = zod.object({
   patientId: zod.string().min(1, 'Patient selection is required'),
+  providerId: zod.string().optional(),
   dateTime: zod.string().min(1, 'Date and time is required'),
   duration: zod.string().min(1, 'Duration is required'),
   type: zod.string().min(2, 'Treatment type is required'),
@@ -51,17 +56,17 @@ const APPT_STATUSES = [
 export default function Appointments() {
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [calendarView, setCalendarView] = useState<any>(Views.WEEK);
   const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // Modals state
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editAppt, setEditAppt] = useState<any | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string>('');
 
-  // Queries
   const { data: appointments, isLoading } = useQuery({
-    queryKey: ['appointments'],
+    queryKey: ['appointments', selectedProviderId],
     queryFn: async () => {
-      const { data } = await api.get('/api/appointments');
+      const url = selectedProviderId ? `/api/appointments?providerId=${selectedProviderId}` : '/api/appointments';
+      const { data } = await api.get(url);
       return data;
     },
   });
@@ -74,25 +79,22 @@ export default function Appointments() {
     },
   });
 
-  const {
-    register: registerAdd,
-    handleSubmit: handleSubmitAdd,
-    reset: resetAdd,
-    formState: { errors: errorsAdd },
-  } = useForm<AppointmentFormInputs>({
+  const { data: providers } = useQuery({
+    queryKey: ['providers'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/providers');
+      return data;
+    },
+  });
+
+  const { register: registerAdd, handleSubmit: handleSubmitAdd, reset: resetAdd, formState: { errors: errorsAdd } } = useForm<AppointmentFormInputs>({
     resolver: zodResolver(appointmentSchema),
   });
 
-  const {
-    register: registerEdit,
-    handleSubmit: handleSubmitEdit,
-    setValue: setEditValue,
-    formState: { errors: errorsEdit },
-  } = useForm<AppointmentFormInputs>({
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, setValue: setEditValue, formState: { errors: errorsEdit } } = useForm<AppointmentFormInputs>({
     resolver: zodResolver(appointmentSchema),
   });
 
-  // Mutations
   const createMutation = useMutation({
     mutationFn: async (payload: any) => {
       const { data } = await api.post('/api/appointments', payload);
@@ -104,9 +106,7 @@ export default function Appointments() {
       setAddModalOpen(false);
       resetAdd();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || 'Failed to create appointment.');
-    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to create appointment.'),
   });
 
   const updateMutation = useMutation({
@@ -119,9 +119,7 @@ export default function Appointments() {
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
       setEditAppt(null);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || 'Failed to update appointment.');
-    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to update appointment.'),
   });
 
   const deleteMutation = useMutation({
@@ -132,9 +130,7 @@ export default function Appointments() {
       toast.success('Appointment cancelled and removed.');
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || 'Failed to delete appointment.');
-    },
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to delete appointment.'),
   });
 
   const sendReminderMutation = useMutation({
@@ -142,48 +138,19 @@ export default function Appointments() {
       const { data } = await api.post(`/api/appointments/${id}/send-reminder`);
       return data;
     },
-    onSuccess: () => {
-      toast.success('Reminder message queued successfully.');
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.error || 'Failed to trigger reminder.');
-    },
+    onSuccess: () => toast.success('Reminder message queued successfully.'),
+    onError: (err: any) => toast.error(err.response?.data?.error || 'Failed to trigger reminder.'),
   });
-
-  // Calendar calculations
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startDayOfWeek = getDay(monthStart); // 0 (Sunday) to 6 (Saturday)
-
-  // Empty cells before start of month
-  const blanks = Array(startDayOfWeek).fill(null);
-
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  };
 
   const handleEditClick = (appt: any) => {
     setEditAppt(appt);
     setEditValue('patientId', appt.patientId);
+    setEditValue('providerId', appt.providerId || '');
     setEditValue('dateTime', appt.dateTime ? appt.dateTime.slice(0, 16) : '');
     setEditValue('duration', appt.duration.toString());
     setEditValue('type', appt.type);
     setEditValue('status', appt.status);
     setEditValue('notes', appt.notes || '');
-  };
-
-  const handleCreateSubmit = (data: AppointmentFormInputs) => {
-    createMutation.mutate(data);
-  };
-
-  const handleEditSubmit = (data: AppointmentFormInputs) => {
-    if (!editAppt) return;
-    updateMutation.mutate({ id: editAppt.id, payload: data });
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -196,125 +163,126 @@ export default function Appointments() {
     }
   };
 
-  const getApptTypeColor = (type: string) => {
-    switch (type) {
-      case 'checkup': return 'border-l-4 border-l-primary-500';
-      case 'filling': return 'border-l-4 border-l-warning-500';
-      case 'cleaning': return 'border-l-4 border-l-success-500';
-      case 'ortho': return 'border-l-4 border-l-sky-400';
-      default: return 'border-l-4 border-l-slate-600';
-    }
+  // Prepare events for react-big-calendar
+  const events = (appointments || []).map((appt: any) => {
+    const start = new Date(appt.dateTime);
+    const end = new Date(start.getTime() + appt.duration * 60000);
+    return {
+      id: appt.id,
+      title: `${appt.patient?.firstName} ${appt.patient?.lastName} - ${appt.type}`,
+      start,
+      end,
+      resource: appt,
+      providerColor: appt.provider?.color || '#475569',
+    };
+  });
+
+  const eventStyleGetter = (event: any) => {
+    const style = {
+      backgroundColor: event.providerColor,
+      borderRadius: '4px',
+      opacity: 0.9,
+      color: 'white',
+      border: '0px',
+      display: 'block',
+      fontSize: '0.75rem',
+    };
+    return { style };
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-100 to-slate-400 bg-clip-text text-transparent">
-            Appointment Manager
+            Appointment Schedule
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Book checkups, update patient arrival statuses, and dispatch quick reminders.
+            Manage provider schedules and patient bookings.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle buttons */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="h-9 px-3 text-xs rounded-lg bg-slate-900 border border-slate-800 text-slate-300 focus:outline-none focus:border-primary-500"
+            value={selectedProviderId}
+            onChange={(e) => setSelectedProviderId(e.target.value)}
+          >
+            <option value="">All Providers</option>
+            {(providers || []).map((p: any) => (
+              <option key={p.id} value={p.id}>Dr. {p.lastName}</option>
+            ))}
+          </select>
+
           <div className="bg-slate-900 border border-slate-800 rounded-lg p-1 flex gap-1 h-9 items-center">
             <button
               onClick={() => setViewMode('calendar')}
-              className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'calendar' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'}`}
             >
               <CalendarIcon className="h-4 w-4" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-md transition-all ${
-                viewMode === 'list' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-primary-500 text-white' : 'text-slate-400 hover:text-white'}`}
             >
               <List className="h-4 w-4" />
             </button>
           </div>
 
-          <Button variant="primary" size="sm" onClick={() => setAddModalOpen(true)} className="h-9 font-semibold">
+          <Button variant="primary" size="sm" onClick={() => { resetAdd(); setAddModalOpen(true); }} className="h-9 font-semibold">
             <Plus className="h-4 w-4 mr-1.5" /> Book Appointment
           </Button>
         </div>
       </div>
 
-      {/* Main schedule layout */}
       {isLoading ? (
-        <div className="py-16 flex flex-col items-center justify-center gap-3">
-          <Spinner className="w-8 h-8" />
-          <span className="text-xs text-slate-500">Loading schedules...</span>
-        </div>
+        <div className="py-16 flex justify-center"><Spinner /></div>
       ) : viewMode === 'calendar' ? (
-        /* ==========================================
-            CALENDAR VIEW
-            ========================================== */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-slate-900/20 p-4 rounded-xl border border-slate-800">
-            <h2 className="text-md font-bold text-slate-200">{format(currentDate, 'MMMM yyyy')}</h2>
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={prevMonth}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="secondary" size="sm" className="h-8 w-8 p-0" onClick={nextMonth}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-xl overflow-hidden shadow-2xl border border-slate-800">
-            {/* Week header */}
-            <div className="grid grid-cols-7 text-center font-bold text-xs text-slate-500 border-b border-slate-800/80 bg-slate-900/40 py-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div key={d}>{d}</div>
-              ))}
-            </div>
-
-            {/* Days Grid */}
-            <div className="grid grid-cols-7 grid-rows-5 divide-x divide-y divide-slate-800/60 bg-slate-950/10 min-h-[480px]">
-              {blanks.map((_, i) => (
-                <div key={`blank-${i}`} className="bg-slate-950/20 min-h-[80px]" />
-              ))}
-              {monthDays.map((day) => {
-                const dayAppts = (appointments || []).filter((a: any) =>
-                  isSameDay(new Date(a.dateTime), day)
-                );
-
-                return (
-                  <div
-                    key={day.toString()}
-                    className="p-1 min-h-[90px] flex flex-col justify-between hover:bg-slate-900/10 group transition-all"
-                  >
-                    <span className="text-[11px] font-bold text-slate-500 self-end p-1">{format(day, 'd')}</span>
-                    <div className="flex-1 space-y-1 overflow-y-auto max-h-[70px]">
-                      {dayAppts.map((appt: any) => (
-                        <div
-                          key={appt.id}
-                          onClick={() => handleEditClick(appt)}
-                          className={`px-1.5 py-0.5 rounded text-[9px] cursor-pointer truncate transition-all ${getApptTypeColor(
-                            appt.type
-                          )} bg-slate-900/60 border border-slate-800/80 text-slate-300 hover:bg-slate-800`}
-                        >
-                          {format(new Date(appt.dateTime), 'h:mma')} {appt.patient?.lastName}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <Card className="h-[750px] p-4 bg-slate-900/40 border border-slate-800">
+          <style dangerouslySetInnerHTML={{__html: `
+            .rbc-calendar { font-family: inherit; color: #cbd5e1; }
+            .rbc-toolbar button { color: #cbd5e1; border-color: #334155; }
+            .rbc-toolbar button:active, .rbc-toolbar button.rbc-active { background-color: #0ea5e9; color: white; border-color: #0ea5e9; }
+            .rbc-header { border-bottom: 1px solid #334155; padding: 8px 0; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+            .rbc-month-view, .rbc-time-view, .rbc-agenda-view { border-color: #334155; border-radius: 8px; overflow: hidden; background: rgba(15,23,42,0.6); }
+            .rbc-day-bg + .rbc-day-bg { border-left: 1px solid #334155; }
+            .rbc-month-row + .rbc-month-row { border-top: 1px solid #334155; }
+            .rbc-time-content { border-top: 1px solid #334155; }
+            .rbc-time-slot { border-top: 1px solid rgba(51, 65, 85, 0.4); }
+            .rbc-time-header-content { border-left: 1px solid #334155; }
+            .rbc-timeslot-group { border-bottom: 1px solid #334155; }
+            .rbc-day-slot .rbc-time-slot { border-top: 1px solid rgba(51, 65, 85, 0.5); }
+            .rbc-today { background-color: rgba(14, 165, 233, 0.1); }
+            .rbc-off-range-bg { background-color: rgba(15, 23, 42, 0.8); }
+            .rbc-event { box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1) !important; padding: 2px 5px; }
+            .rbc-event:hover { opacity: 1 !important; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 50; }
+            .rbc-event-content { font-size: 0.7rem; font-weight: 500; }
+            .rbc-time-view .rbc-allday-cell { background: rgba(15,23,42,0.8); border-bottom: 1px solid #334155; }
+          `}} />
+          <Calendar
+            localizer={localizer}
+            events={events}
+            startAccessor="start"
+            endAccessor="end"
+            view={calendarView}
+            onView={setCalendarView}
+            date={currentDate}
+            onNavigate={setCurrentDate}
+            onSelectEvent={(event) => handleEditClick(event.resource)}
+            onSelectSlot={(slotInfo) => {
+              resetAdd();
+              setAddModalOpen(true);
+              const { register } = useForm();
+              // Try to set start date automatically if possible
+            }}
+            selectable
+            eventPropGetter={eventStyleGetter}
+            step={15}
+            timeslots={4}
+            min={new Date(0, 0, 0, 7, 0, 0)} // 7 AM
+            max={new Date(0, 0, 0, 19, 0, 0)} // 7 PM
+          />
+        </Card>
       ) : (
-        /* ==========================================
-            LIST VIEW
-            ========================================== */
         <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
@@ -322,10 +290,9 @@ export default function Appointments() {
                 <tr className="border-b border-slate-800 bg-slate-900/10 text-slate-400 font-semibold uppercase">
                   <th className="py-3 px-6">Date & Time</th>
                   <th className="py-3 px-4">Patient</th>
+                  <th className="py-3 px-4">Provider</th>
                   <th className="py-3 px-4">Type</th>
-                  <th className="py-3 px-4">Duration</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Reminder</th>
                   <th className="py-3 px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -338,110 +305,59 @@ export default function Appointments() {
                     <td className="py-3 px-4 font-semibold text-slate-300">
                       {appt.patient?.firstName} {appt.patient?.lastName}
                     </td>
+                    <td className="py-3 px-4 text-slate-300">
+                      {appt.provider ? `Dr. ${appt.provider.lastName}` : 'Unassigned'}
+                    </td>
                     <td className="py-3 px-4 capitalize text-slate-400">{appt.type}</td>
-                    <td className="py-3 px-4 text-slate-400">{appt.duration} Min</td>
                     <td className="py-3 px-4">
                       <Badge color={getStatusBadgeColor(appt.status)}>{appt.status}</Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      {!appt.patient?.optedOut ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="h-7 px-2.5 text-[10px] bg-slate-900 hover:bg-primary-500 border-slate-800/80 hover:text-white"
-                          onClick={() => sendReminderMutation.mutate(appt.id)}
-                          isLoading={sendReminderMutation.isPending && sendReminderMutation.variables === appt.id}
-                        >
-                          <Send className="h-3 w-3 mr-1" /> Remind
-                        </Button>
-                      ) : (
-                        <span className="text-[10px] text-slate-600 font-semibold">Opted Out</span>
-                      )}
                     </td>
                     <td className="py-3 px-6 text-right space-x-2">
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditClick(appt)}>
                         <CalendarIcon className="h-3.5 w-3.5 text-slate-400 hover:text-white" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() => {
-                          if (confirm('Cancel and delete appointment?')) {
-                            deleteMutation.mutate(appt.id);
-                          }
-                        }}
-                      >
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { if (confirm('Cancel appointment?')) deleteMutation.mutate(appt.id); }}>
                         <Trash2 className="h-3.5 w-3.5 text-danger-500 hover:text-danger-400" />
                       </Button>
                     </td>
                   </tr>
                 ))}
-                {(appointments || []).length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-500">
-                      No appointments booked.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </Card>
       )}
 
-      {/* ==========================================
-          MODALS
-          ========================================== */}
-
       {/* Book Appointment Modal */}
       <Modal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} title="Book Appointment">
-        <form onSubmit={handleSubmitAdd(handleCreateSubmit)} className="space-y-4">
-          <Select
-            label="Select Patient"
-            options={[
-              { value: '', label: 'Choose a patient...' },
-              ...(patients || []).map((p: any) => ({ value: p.id, label: `${p.firstName} ${p.lastName} (${p.phone})` })),
-            ]}
-            error={errorsAdd.patientId?.message}
-            {...registerAdd('patientId')}
-          />
+        <form onSubmit={handleSubmitAdd((data) => createMutation.mutate(data))} className="space-y-4">
+          <Select label="Select Patient" options={[{ value: '', label: 'Choose...' }, ...(patients || []).map((p: any) => ({ value: p.id, label: `${p.firstName} ${p.lastName}` }))]} error={errorsAdd.patientId?.message} {...registerAdd('patientId')} />
+          <Select label="Assign Provider" options={[{ value: '', label: 'Any Provider' }, ...(providers || []).map((p: any) => ({ value: p.id, label: `Dr. ${p.firstName} ${p.lastName}` }))]} {...registerAdd('providerId')} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Appointment Date & Time" type="datetime-local" error={errorsAdd.dateTime?.message} {...registerAdd('dateTime')} />
-            <Input label="Duration (minutes)" type="number" placeholder="30" error={errorsAdd.duration?.message} {...registerAdd('duration')} />
+            <Input label="Date & Time" type="datetime-local" error={errorsAdd.dateTime?.message} {...registerAdd('dateTime')} />
+            <Input label="Duration (min)" type="number" placeholder="30" error={errorsAdd.duration?.message} {...registerAdd('duration')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select label="Treatment Type" options={APPT_TYPES} error={errorsAdd.type?.message} {...registerAdd('type')} />
             <Select label="Status" options={APPT_STATUSES} {...registerAdd('status')} />
           </div>
-          <Textarea label="Treatment Notes (Optional)" placeholder="Add notes here..." error={errorsAdd.notes?.message} {...registerAdd('notes')} />
+          <Textarea label="Treatment Notes" placeholder="Add notes here..." error={errorsAdd.notes?.message} {...registerAdd('notes')} />
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-            <Button variant="secondary" type="button" onClick={() => setAddModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={createMutation.isPending}>
-              Book Appointment
-            </Button>
+            <Button variant="secondary" type="button" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" type="submit" isLoading={createMutation.isPending}>Book Appointment</Button>
           </div>
         </form>
       </Modal>
 
       {/* Edit Appointment Modal */}
-      <Modal isOpen={editAppt !== null} onClose={() => setEditAppt(null)} title="Update Appointment Details">
-        <form onSubmit={handleSubmitEdit(handleEditSubmit)} className="space-y-4">
-          <Select
-            label="Patient"
-            disabled
-            options={[
-              ...(patients || []).map((p: any) => ({ value: p.id, label: `${p.firstName} ${p.lastName}` })),
-            ]}
-            error={errorsEdit.patientId?.message}
-            {...registerEdit('patientId')}
-          />
+      <Modal isOpen={editAppt !== null} onClose={() => setEditAppt(null)} title="Update Appointment">
+        <form onSubmit={handleSubmitEdit((data) => { if (editAppt) updateMutation.mutate({ id: editAppt.id, payload: data }); })} className="space-y-4">
+          <Select label="Patient" disabled options={[...(patients || []).map((p: any) => ({ value: p.id, label: `${p.firstName} ${p.lastName}` }))]} {...registerEdit('patientId')} />
+          <Select label="Assign Provider" options={[{ value: '', label: 'Any Provider' }, ...(providers || []).map((p: any) => ({ value: p.id, label: `Dr. ${p.firstName} ${p.lastName}` }))]} {...registerEdit('providerId')} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Appointment Date & Time" type="datetime-local" error={errorsEdit.dateTime?.message} {...registerEdit('dateTime')} />
-            <Input label="Duration (minutes)" type="number" error={errorsEdit.duration?.message} {...registerEdit('duration')} />
+            <Input label="Date & Time" type="datetime-local" error={errorsEdit.dateTime?.message} {...registerEdit('dateTime')} />
+            <Input label="Duration (min)" type="number" error={errorsEdit.duration?.message} {...registerEdit('duration')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Select label="Treatment Type" options={APPT_TYPES} error={errorsEdit.type?.message} {...registerEdit('type')} />
@@ -449,13 +365,14 @@ export default function Appointments() {
           </div>
           <Textarea label="Treatment Notes" error={errorsEdit.notes?.message} {...registerEdit('notes')} />
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-            <Button variant="secondary" type="button" onClick={() => setEditAppt(null)}>
-              Cancel
+          <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+            <Button variant="secondary" type="button" size="sm" onClick={() => sendReminderMutation.mutate(editAppt.id)} isLoading={sendReminderMutation.isPending}>
+              <Send className="h-3 w-3 mr-1" /> Send Reminder
             </Button>
-            <Button variant="primary" type="submit" isLoading={updateMutation.isPending}>
-              Save Changes
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" type="button" onClick={() => setEditAppt(null)}>Cancel</Button>
+              <Button variant="primary" type="submit" isLoading={updateMutation.isPending}>Save Changes</Button>
+            </div>
           </div>
         </form>
       </Modal>

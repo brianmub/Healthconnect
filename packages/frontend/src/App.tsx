@@ -16,6 +16,7 @@ import Appointments from './pages/Appointments';
 import Automation from './pages/Automation';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Providers from './pages/Providers';
 
 // Layout Imports
 import AppLayout from './components/layout/AppLayout';
@@ -148,6 +149,7 @@ export default function App() {
             <Route path="/automation" element={<Automation />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/providers" element={<Providers />} />
             
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
