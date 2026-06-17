@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
-import { validateToken } from '../middleware/auth';
+import { authenticateJWT as validateToken } from '../middleware/auth';
 
 const router = Router();
 router.use(validateToken);
