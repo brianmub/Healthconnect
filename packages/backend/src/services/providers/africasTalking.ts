@@ -18,7 +18,7 @@ export class AfricasTalkingProvider implements SmsProvider {
     // Detect sandbox mode: Africa's Talking uses username "sandbox" for testing
     this.isSandbox = username === 'sandbox';
 
-    if (!apiKey || !username || apiKey.startsWith('mock') || apiKey.includes('xxxx') || apiKey.startsWith('your_')) {
+    if (!apiKey || !username || apiKey.startsWith('mock') || apiKey.includes('xxxx')) {
       console.log("⚠️ Africa's Talking credentials missing or mock. AT provider running in Mock Mode.");
       this.isMock = true;
     } else {
