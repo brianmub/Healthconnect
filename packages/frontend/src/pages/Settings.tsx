@@ -13,9 +13,12 @@ import {
   Save
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '../store/authStore';
 
 export default function Settings() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
   const [activeTab, setActiveTab] = useState<'profile' | 'sms' | 'whatsapp' | 'users'>('profile');
   const [testPhone, setTestPhone] = useState('');
   const [testMsg, setTestMsg] = useState('This is a test notification from HealthConnect.');
@@ -28,6 +31,48 @@ export default function Settings() {
       return data;
     },
   });
+
+  // Fetch users (only if admin)
+  const { data: usersList, isLoading: isLoadingUsers } = useQuery({
+    queryKey: ['settings', 'users'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/settings/users');
+      return data;
+    },
+    enabled: isAdmin && activeTab === 'users',
+  });
+
+  // Create user mutation
+  const createUserMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const { data } = await api.post('/api/settings/users', payload);
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('New user account created successfully.');
+      queryClient.invalidateQueries({ queryKey: ['settings', 'users'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to create user account.');
+    },
+  });
+
+  const handleAddUserSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    const payload = {
+      name: data.get('name'),
+      email: data.get('email'),
+      password: data.get('password'),
+      role: data.get('role'),
+    };
+    createUserMutation.mutate(payload, {
+      onSuccess: () => {
+        form.reset();
+      },
+    });
+  };
 
   // Settings update mutation
   const updateSettingsMutation = useMutation({
@@ -120,12 +165,6 @@ export default function Settings() {
     updateSettingsMutation.mutate(payload);
   };
 
-  // Mock users list matching seeded data
-  const mockUsers = [
-    { name: 'Dr. Brian Mubvumbi', email: 'admin@healthconnect.com', role: 'ADMIN' },
-    { name: 'Sarah Ncube', email: 'staff@healthconnect.com', role: 'STAFF' },
-  ];
-
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -171,16 +210,18 @@ export default function Settings() {
         >
           <MessageSquare className="h-4 w-4" /> WhatsApp Gateway
         </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
-            activeTab === 'users'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <UsersIcon className="h-4 w-4" /> User Accounts
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+              activeTab === 'users'
+                ? 'border-primary-500 text-primary-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UsersIcon className="h-4 w-4" /> User Accounts
+          </button>
+        )}
       </div>
 
       {/* Tab Panels */}
@@ -276,78 +317,136 @@ export default function Settings() {
           )}
 
           {/* 4. Users list */}
-          {activeTab === 'users' && (
+          {activeTab === 'users' && isAdmin && (
             <Card className="p-0 overflow-hidden">
               <div className="p-6 border-b border-slate-850 flex justify-between items-center">
                 <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">User Administration</h3>
                 <Badge color="primary">Active Team</Badge>
               </div>
-              <div className="divide-y divide-slate-800">
-                {mockUsers.map((u) => (
-                  <div key={u.email} className="p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-xs font-bold text-slate-400">
-                        {u.name.substring(0, 2).toUpperCase()}
+              {isLoadingUsers ? (
+                <div className="p-8 flex flex-col items-center justify-center gap-3">
+                  <Spinner className="w-6 h-6" />
+                  <span className="text-xs text-slate-500">Loading user accounts...</span>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-800">
+                  {usersList?.map((u: any) => (
+                    <div key={u.email} className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-xs font-bold text-slate-400">
+                          {u.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-200 text-xs block">{u.name}</span>
+                          <span className="text-[10px] text-slate-500">{u.email}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-semibold text-slate-200 text-xs block">{u.name}</span>
-                        <span className="text-[10px] text-slate-500">{u.email}</span>
-                      </div>
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                        <Shield className="h-3.5 w-3.5 text-primary-500" /> {u.role}
+                      </span>
                     </div>
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                      <Shield className="h-3.5 w-3.5 text-primary-500" /> {u.role}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </Card>
           )}
         </div>
 
-        {/* Integration Validation Testing Panel */}
+        {/* Integration Validation Testing Panel / Add New User */}
         <div className="lg:col-span-1">
-          <Card className="space-y-4 border-slate-800 bg-slate-900/10">
-            <div>
-              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gateway Test Tool</h4>
-              <p className="text-[10px] text-slate-500 mt-1">Verify SMS & WhatsApp settings by delivering a quick ping.</p>
-            </div>
-            
-            <Input
-              label="Recipient Phone (E.164)"
-              placeholder="+26377..."
-              value={testPhone}
-              onChange={(e) => setTestPhone(e.target.value)}
-            />
-            
-            <Input
-              label="Test Body message"
-              value={testMsg}
-              onChange={(e) => setTestMsg(e.target.value)}
-            />
+          {activeTab === 'users' && isAdmin ? (
+            <Card className="space-y-4 border-slate-800 bg-slate-900/10">
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Add New User</h4>
+                <p className="text-[10px] text-slate-500 mt-1">Register a new system user with specific role permissions.</p>
+              </div>
+              <form onSubmit={handleAddUserSubmit} className="space-y-4">
+                <Input
+                  label="Full Name"
+                  name="name"
+                  placeholder="e.g. John Doe"
+                  required
+                />
+                <Input
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  placeholder="e.g. john@example.com"
+                  required
+                />
+                <Input
+                  label="Password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                />
+                <Select
+                  label="Access Role"
+                  name="role"
+                  defaultValue="STAFF"
+                  options={[
+                    { value: 'STAFF', label: 'Staff (Standard permissions)' },
+                    { value: 'ADMIN', label: 'Admin (Full system access)' },
+                  ]}
+                  required
+                />
+                <div className="pt-2">
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    className="w-full text-xs"
+                    isLoading={createUserMutation.isPending}
+                  >
+                    <UsersIcon className="h-4 w-4 mr-1.5" /> Add User
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          ) : (
+            <Card className="space-y-4 border-slate-800 bg-slate-900/10">
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gateway Test Tool</h4>
+                <p className="text-[10px] text-slate-500 mt-1">Verify SMS & WhatsApp settings by delivering a quick ping.</p>
+              </div>
+              
+              <Input
+                label="Recipient Phone (E.164)"
+                placeholder="+26377..."
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+              />
+              
+              <Input
+                label="Test Body message"
+                value={testMsg}
+                onChange={(e) => setTestMsg(e.target.value)}
+              />
 
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                className="text-xs h-9 py-1 px-2.5 bg-slate-900 hover:bg-primary-500 hover:text-white"
-                onClick={() => testSmsMutation.mutate()}
-                isLoading={testSmsMutation.isPending}
-                disabled={!testPhone}
-              >
-                <Send className="h-3 w-3 mr-1" /> Test SMS
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="text-xs h-9 py-1 px-2.5 bg-slate-900 hover:bg-success-500 hover:text-white"
-                onClick={() => testWhatsappMutation.mutate()}
-                isLoading={testWhatsappMutation.isPending}
-                disabled={!testPhone}
-              >
-                <MessageSquare className="h-3 w-3 mr-1" /> Test WA
-              </Button>
-            </div>
-          </Card>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs h-9 py-1 px-2.5 bg-slate-900 hover:bg-primary-500 hover:text-white"
+                  onClick={() => testSmsMutation.mutate()}
+                  isLoading={testSmsMutation.isPending}
+                  disabled={!testPhone}
+                >
+                  <Send className="h-3 w-3 mr-1" /> Test SMS
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs h-9 py-1 px-2.5 bg-slate-900 hover:bg-success-500 hover:text-white"
+                  onClick={() => testWhatsappMutation.mutate()}
+                  isLoading={testWhatsappMutation.isPending}
+                  disabled={!testPhone}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" /> Test WA
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>
