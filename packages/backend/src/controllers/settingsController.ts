@@ -133,7 +133,7 @@ export async function testSms(req: Request, res: Response) {
     if (settings?.smsLocalhostApiKey)   process.env.SMS_LOCALHOST_API_KEY   = settings.smsLocalhostApiKey;
     if (settings?.smsLocalhostSenderId) process.env.SMS_LOCALHOST_SENDER_ID = settings.smsLocalhostSenderId;
     // Activate the correct provider based on which credentials are saved in DB
-    if (settings?.smsLocalhostApiKey)   process.env.SMS_PROVIDER            = 'sms_localhost';
+    if (settings?.smsLocalhostApiKey)   process.env.SMS_PROVIDER            = 'smsLocalhost';
 
     const result = await messagingService.sendSms(normalizedPhone, message);
     if (result.status === 'failed') {

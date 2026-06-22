@@ -48,7 +48,7 @@ export class MessagingService {
 
       // Auto-detect provider: if SMS Localhost key is saved in DB, activate it
       if (settings.smsLocalhostApiKey && !process.env.SMS_PROVIDER) {
-        process.env.SMS_PROVIDER = 'sms_localhost';
+        process.env.SMS_PROVIDER = 'smsLocalhost';
       }
 
       // Twilio credentials

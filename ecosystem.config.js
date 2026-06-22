@@ -11,7 +11,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        SMS_PROVIDER: 'sms_localhost',
+        SMS_PROVIDER: 'smsLocalhost',
         REDIS_URL: 'redis://127.0.0.1:6379',
         FRONTEND_URL: 'http://212.90.121.97:8787',
       },
