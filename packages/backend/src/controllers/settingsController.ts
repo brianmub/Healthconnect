@@ -132,6 +132,8 @@ export async function testSms(req: Request, res: Response) {
     const settings = await prisma.setting.findUnique({ where: { id: 'global' } });
     if (settings?.smsLocalhostApiKey)   process.env.SMS_LOCALHOST_API_KEY   = settings.smsLocalhostApiKey;
     if (settings?.smsLocalhostSenderId) process.env.SMS_LOCALHOST_SENDER_ID = settings.smsLocalhostSenderId;
+    // Activate the correct provider based on which credentials are saved in DB
+    if (settings?.smsLocalhostApiKey)   process.env.SMS_PROVIDER            = 'sms_localhost';
 
     const result = await messagingService.sendSms(normalizedPhone, message);
     if (result.status === 'failed') {
