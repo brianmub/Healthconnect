@@ -35,6 +35,31 @@ export class MessagingService {
     }
   }
 
+  // Sync credentials stored in DB into process.env so providers always
+  // pick them up for BOTH test sends and bulk campaign sends.
+  private async syncCredentialsFromDb(): Promise<void> {
+    try {
+      const settings = await prisma.setting.findUnique({ where: { id: 'global' } });
+      if (!settings) return;
+
+      // SMS Localhost credentials
+      if (settings.smsLocalhostApiKey)   process.env.SMS_LOCALHOST_API_KEY   = settings.smsLocalhostApiKey;
+      if (settings.smsLocalhostSenderId) process.env.SMS_LOCALHOST_SENDER_ID = settings.smsLocalhostSenderId;
+
+      // Auto-detect provider: if SMS Localhost key is saved in DB, activate it
+      if (settings.smsLocalhostApiKey && !process.env.SMS_PROVIDER) {
+        process.env.SMS_PROVIDER = 'sms_localhost';
+      }
+
+      // Twilio credentials
+      if (settings.twilioAccountSid)   process.env.TWILIO_ACCOUNT_SID    = settings.twilioAccountSid;
+      if (settings.twilioAuthToken)    process.env.TWILIO_AUTH_TOKEN     = settings.twilioAuthToken;
+      if (settings.twilioPhoneNumber)  process.env.TWILIO_PHONE_NUMBER   = settings.twilioPhoneNumber;
+    } catch (err) {
+      console.error('syncCredentialsFromDb error:', err);
+    }
+  }
+
   // Retrieve active SMS provider based on SMS_PROVIDER env variable
   // Supported values: 'twilio' | 'africasTalking' | 'smsLocalhost'
   private getSmsProvider(): SmsProvider {
@@ -68,6 +93,8 @@ export class MessagingService {
 
   // Send a single SMS
   async sendSms(to: string, body: string): Promise<SendResult> {
+    // Always sync DB credentials first so bulk sends work the same as test sends
+    await this.syncCredentialsFromDb();
     const provider = this.getSmsProvider();
     
     // Auto-append unsubscribe info if not present
@@ -81,6 +108,8 @@ export class MessagingService {
 
   // Send a single WhatsApp message
   async sendWhatsApp(to: string, body: string): Promise<SendResult> {
+    // Always sync DB credentials first
+    await this.syncCredentialsFromDb();
     const provider = this.getWhatsappProvider();
 
     // Auto-append unsubscribe info if not present
