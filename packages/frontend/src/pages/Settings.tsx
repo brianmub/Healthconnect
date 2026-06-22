@@ -10,7 +10,13 @@ import {
   Users as UsersIcon,
   Shield,
   Send,
-  Save
+  Save,
+  History,
+  Search,
+  RefreshCw,
+  Copy,
+  Check,
+  Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../store/authStore';
@@ -19,9 +25,22 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
-  const [activeTab, setActiveTab] = useState<'profile' | 'sms' | 'whatsapp' | 'users'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'sms' | 'whatsapp' | 'users' | 'sms-logs'>('profile');
   const [testPhone, setTestPhone] = useState('');
   const [testMsg, setTestMsg] = useState('This is a test notification from HealthConnect.');
+
+  // Search and filter states for SMS Logs
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [providerFilter, setProviderFilter] = useState('all');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyId = (id: string) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(id);
+    toast.success('Message ID copied to clipboard');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Fetch settings
   const { data: settings, isLoading } = useQuery({
@@ -31,6 +50,29 @@ export default function Settings() {
       return data;
     },
   });
+
+  // Fetch SMS logs
+  const { data: logs, isLoading: isLoadingLogs, refetch: refetchLogs } = useQuery({
+    queryKey: ['settings', 'sms-logs'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/settings/sms/logs');
+      return data;
+    },
+    enabled: activeTab === 'sms-logs',
+  });
+
+  // Filter logs based on search and selected filter values
+  const filteredLogs = logs?.filter((log: any) => {
+    const matchesSearch = 
+      log.to.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.msgId && log.msgId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      log.message.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
+    const matchesProvider = providerFilter === 'all' || log.provider === providerFilter;
+
+    return matchesSearch && matchesStatus && matchesProvider;
+  }) || [];
 
   // Fetch users (only if admin)
   const { data: usersList, isLoading: isLoadingUsers } = useQuery({
@@ -201,6 +243,16 @@ export default function Settings() {
           <Smartphone className="h-4 w-4" /> SMS Integration
         </button>
         <button
+          onClick={() => setActiveTab('sms-logs')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
+            activeTab === 'sms-logs'
+              ? 'border-primary-500 text-primary-400'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <History className="h-4 w-4" /> SMS Logs
+        </button>
+        <button
           onClick={() => setActiveTab('whatsapp')}
           className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all ${
             activeTab === 'whatsapp'
@@ -346,6 +398,133 @@ export default function Settings() {
                       </span>
                     </div>
                   ))}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* 5. SMS Logs viewer */}
+          {activeTab === 'sms-logs' && (
+            <Card className="flex flex-col space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">SMS Dispatch History</h3>
+                  <p className="text-[10px] text-slate-500">Real-time delivery status for all outgoing messages (including test pings).</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="p-2 border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-400 hover:text-slate-200 flex items-center justify-center rounded-lg"
+                  onClick={() => refetchLogs()}
+                  isLoading={isLoadingLogs}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="relative md:col-span-1 flex items-center">
+                  <span className="absolute left-3 text-slate-500">
+                    <Search className="h-4 w-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search logs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="glass-input w-full pl-9 pr-3 py-2 text-sm text-slate-100 rounded-lg outline-none border-slate-800 focus:border-primary-500 bg-slate-950/40"
+                  />
+                </div>
+                
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Statuses' },
+                    { value: 'queued', label: 'Sent / Queued' },
+                    { value: 'failed', label: 'Failed' },
+                  ]}
+                />
+
+                <Select
+                  value={providerFilter}
+                  onChange={(e) => setProviderFilter(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Providers' },
+                    { value: 'twilio', label: 'Twilio' },
+                    { value: 'africasTalking', label: "Africa's Talking" },
+                    { value: 'smsLocalhost', label: 'SMS Localhost' },
+                  ]}
+                />
+              </div>
+
+              {/* Logs Content */}
+              {isLoadingLogs ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <Spinner className="w-8 h-8" />
+                  <span className="text-xs text-slate-500">Reading dispatch files...</span>
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-center border border-dashed border-slate-850 rounded-lg p-6 bg-slate-900/10">
+                  <History className="h-8 w-8 text-slate-650 mb-2" />
+                  <p className="text-slate-400 text-xs font-semibold">No matching logs found</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Try tweaking your search term or filter parameters.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="divide-y divide-slate-850 max-h-[500px] overflow-y-auto pr-1 animate-fade-in">
+                    {filteredLogs.map((log: any, index: number) => (
+                      <div key={index} className="py-3.5 flex flex-col space-y-1.5 transition-colors hover:bg-slate-900/10 rounded px-2">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-200">{log.to}</span>
+                            <span className="text-[9px] text-slate-500 font-medium">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Badge color={log.status === 'queued' ? 'success' : 'danger'}>
+                              {log.status === 'queued' ? 'Sent' : 'Failed'}
+                            </Badge>
+                            <span className="text-[10px] font-bold text-slate-400 bg-slate-800/60 border border-slate-700 px-2 py-0.5 rounded uppercase tracking-wider">
+                              {log.provider}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-[11px] text-slate-350 bg-slate-950/30 border border-slate-900/50 rounded-lg p-2 font-mono break-all">
+                          {log.message}
+                        </div>
+
+                        {log.error && (
+                          <div className="text-[10px] text-danger-400 font-medium bg-danger-950/15 border border-danger-900/30 rounded p-1.5 flex items-start gap-1">
+                            <Info className="h-3.5 w-3.5 text-danger-500 shrink-0 mt-0.5" />
+                            <span>{log.error}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-[9px] text-slate-505 pt-0.5">
+                          <span className="flex items-center gap-1">
+                            <span>Msg ID:</span>
+                            <span className="font-mono text-slate-400 select-all">{log.msgId}</span>
+                            {log.msgId !== 'N/A' && (
+                              <button
+                                onClick={() => handleCopyId(log.msgId)}
+                                className="text-slate-500 hover:text-slate-300 transition-colors p-0.5 focus:outline-none"
+                                title="Copy Message ID"
+                              >
+                                {copiedId === log.msgId ? (
+                                  <Check className="h-3 w-3 text-success-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </Card>

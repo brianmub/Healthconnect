@@ -6,6 +6,7 @@ import {
   testSms,
   testWhatsapp,
   getSmsBalance,
+  getSmsLogs,
 } from '../controllers/settingsController';
 import { getUsers, createUser } from '../controllers/userController';
 
@@ -17,6 +18,7 @@ router.get('/', getSettings);
 router.put('/', updateSettings);
 router.post('/sms/test', testSms);
 router.get('/sms/balance', getSmsBalance);
+router.get('/sms/logs', getSmsLogs);
 router.post('/whatsapp/test', testWhatsapp);
 
 // User accounts management - ADMIN role only

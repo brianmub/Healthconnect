@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { messagingService } from '../services/messagingService';
 import { validateAndNormalizePhone } from '../utils/phoneValidation';
+import fs from 'fs';
+import path from 'path';
 
 export async function getSettings(req: Request, res: Response) {
   try {
@@ -200,6 +202,44 @@ export async function getSmsBalance(req: Request, res: Response) {
   } catch (err: any) {
     console.error('getSmsBalance error:', err);
     return res.status(500).json({ sms_credits: null, error: err.message || 'Failed to fetch SMS credit balance' });
+  }
+}
+
+export async function getSmsLogs(req: Request, res: Response) {
+  try {
+    const logPath = path.join(__dirname, '../../logs/sms.log');
+    if (!fs.existsSync(logPath)) {
+      return res.json([]);
+    }
+
+    const data = await fs.promises.readFile(logPath, 'utf8');
+    const lines = data.split(/\r?\n/).filter(Boolean);
+    const parsedLogs = [];
+
+    // Pattern to match: [timestamp] TO: phone | MSG_ID: id | STATUS: status | PROVIDER: provider [| ERROR: error] | MSG: "message"
+    const lineRegex = /^\[([^\]]+)\] TO: (.*?) \| MSG_ID: (.*?) \| STATUS: (.*?) \| PROVIDER: (.*?)(?: \| ERROR: (.*?))? \| MSG: "(.*)"$/;
+
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i];
+      const match = line.match(lineRegex);
+      if (match) {
+        const [_, timestamp, to, msgId, status, provider, error, msg] = match;
+        parsedLogs.push({
+          timestamp: timestamp.trim(),
+          to: to.trim(),
+          msgId: msgId.trim(),
+          status: status.trim(),
+          provider: provider.trim(),
+          error: error ? error.trim() : undefined,
+          message: msg,
+        });
+      }
+    }
+
+    res.json(parsedLogs);
+  } catch (err: any) {
+    console.error('getSmsLogs error:', err);
+    res.status(500).json({ error: err.message || 'Failed to retrieve SMS logs' });
   }
 }
 

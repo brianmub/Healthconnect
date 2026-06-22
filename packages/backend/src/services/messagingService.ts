@@ -7,6 +7,8 @@ import { SmsLocalhostProvider } from './providers/smsLocalhost';
 import { validateAndNormalizePhone } from '../utils/phoneValidation';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import fs from 'fs';
+import path from 'path';
 
 // Instantiate providers lazily or once
 const twilioProvider = new TwilioProvider();
@@ -91,11 +93,29 @@ export class MessagingService {
     return result;
   }
 
+  // Write logs for sent SMS messages to a dedicated local file
+  private async logSmsToFile(to: string, body: string, result: SendResult, providerName: string): Promise<void> {
+    try {
+      const logDir = path.join(__dirname, '../../logs');
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      const logPath = path.join(logDir, 'sms.log');
+      const timestamp = new Date().toISOString();
+      const cleanBody = body.replace(/\r?\n/g, ' '); // replace newlines with space to keep log file single-line per log entry
+      const logEntry = `[${timestamp}] TO: ${to} | MSG_ID: ${result.externalId || 'N/A'} | STATUS: ${result.status} | PROVIDER: ${providerName}${result.error ? ` | ERROR: ${result.error}` : ''} | MSG: "${cleanBody}"\n`;
+      await fs.promises.appendFile(logPath, logEntry, 'utf8');
+    } catch (err) {
+      console.error('Failed to write to SMS log file:', err);
+    }
+  }
+
   // Send a single SMS
   async sendSms(to: string, body: string): Promise<SendResult> {
     // Always sync DB credentials first so bulk sends work the same as test sends
     await this.syncCredentialsFromDb();
     const provider = this.getSmsProvider();
+    const providerName = process.env.SMS_PROVIDER || 'twilio';
     
     // Auto-append unsubscribe info if not present
     let finalBody = body;
@@ -103,7 +123,9 @@ export class MessagingService {
       finalBody = `${finalBody.trim()}\n\nReply STOP to unsubscribe`;
     }
 
-    return provider.sendSms(to, finalBody);
+    const result = await provider.sendSms(to, finalBody);
+    await this.logSmsToFile(to, finalBody, result, providerName);
+    return result;
   }
 
   // Send a single WhatsApp message
