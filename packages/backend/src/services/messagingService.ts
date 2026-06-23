@@ -57,6 +57,15 @@ export class MessagingService {
       if (settings.twilioAccountSid)   process.env.TWILIO_ACCOUNT_SID    = settings.twilioAccountSid;
       if (settings.twilioAuthToken)    process.env.TWILIO_AUTH_TOKEN     = settings.twilioAuthToken;
       if (settings.twilioPhoneNumber)  process.env.TWILIO_PHONE_NUMBER   = settings.twilioPhoneNumber;
+
+      // Meta WhatsApp credentials
+      if (settings.metaWhatsappPhoneId) process.env.META_WHATSAPP_PHONE_ID = settings.metaWhatsappPhoneId;
+      if (settings.metaWhatsappToken)   process.env.META_WHATSAPP_TOKEN   = settings.metaWhatsappToken;
+
+      // Auto-detect WhatsApp provider: if Meta credentials exist in DB settings, activate it
+      if (settings.metaWhatsappPhoneId && !process.env.WHATSAPP_PROVIDER) {
+        process.env.WHATSAPP_PROVIDER = 'meta';
+      }
     } catch (err) {
       console.error('syncCredentialsFromDb error:', err);
     }
