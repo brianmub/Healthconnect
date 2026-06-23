@@ -15,6 +15,7 @@
     "prisma:generate": "npm run prisma:generate --workspace=packages/backend",
     "prisma:migrate": "npm run prisma:migrate --workspace=packages/backend",
     "prisma:seed": "npm run prisma:seed --workspace=packages/backend",
+    "db:clear": "npm run db:clear --workspace=packages/backend",
     "install:all": "npm install"
   },
   "devDependencies": {

@@ -252,7 +252,8 @@ export class MessagingService {
     }
 
     // Default clinic settings values
-    const clinicName = "SmileCare Dental Practice";
+    const clinicName = "Macdent Dental Surgery";
+
     const clinicPhone = "+263771234567";
 
     const interpolatedBody = this.interpolateTemplate(campaign.template.body, {

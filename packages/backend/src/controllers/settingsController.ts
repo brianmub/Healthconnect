@@ -14,7 +14,7 @@ export async function getSettings(req: Request, res: Response) {
       settings = await prisma.setting.create({
         data: {
           id: 'global',
-          clinicName: 'SmileCare Dental Practice',
+          clinicName: 'Macdent Dental Surgery',
           clinicPhone: '+263771234567',
           clinicAddress: '123 Samora Machel Ave, Harare',
         },
@@ -90,7 +90,7 @@ export async function updateSettings(req: Request, res: Response) {
       update: updateData,
       create: {
         id: 'global',
-        clinicName: clinicName || 'SmileCare Dental Practice',
+        clinicName: clinicName || 'Macdent Dental Surgery',
         clinicPhone: normalizedPhone || '+263771234567',
         clinicAddress: clinicAddress || '123 Samora Machel Ave, Harare',
         clinicLogo,

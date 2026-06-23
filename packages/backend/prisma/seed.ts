@@ -46,7 +46,7 @@ async function main() {
   await prisma.setting.create({
     data: {
       id: 'global',
-      clinicName: 'SmileCare Dental Practice',
+      clinicName: 'Macdent Dental Surgery',
       clinicPhone: '+263771234567',
       clinicAddress: '123 Samora Machel Ave, Harare',
       twilioAccountSid: 'ACmockaccountsiaddummyvalue',

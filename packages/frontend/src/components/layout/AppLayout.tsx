@@ -152,7 +152,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <span className="hidden lg:inline text-sm font-medium text-slate-400">
-              SmileCare Dental Practice Dashboard
+              Macdent Dental Surgery Dashboard
             </span>
           </div>
 

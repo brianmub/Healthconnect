@@ -9,7 +9,8 @@
     "dev": "nodemon --watch src -e ts --exec ts-node src/index.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "db:clear": "ts-node prisma/clear-test-data.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.12.1",

@@ -200,6 +200,47 @@ export async function runAutomationChecks() {
         }
       }
     }
+
+    if (rule.trigger === 'BIRTHDAY') {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth();
+      const currentDay = today.getDate();
+
+      const patients = await prisma.patient.findMany({
+        where: {
+          optedOut: false,
+          dateOfBirth: {
+            not: null,
+          },
+        },
+      });
+
+      const birthdayPatients = patients.filter((patient) => {
+        if (!patient.dateOfBirth) return false;
+        const dob = new Date(patient.dateOfBirth);
+        return dob.getMonth() === currentMonth && dob.getDate() === currentDay;
+      });
+
+      for (const patient of birthdayPatients) {
+        const startOfYear = new Date(currentYear, 0, 1);
+        const alreadySent = await prisma.messageRecipient.findFirst({
+          where: {
+            patientId: patient.id,
+            campaign: {
+              templateId: rule.templateId,
+            },
+            createdAt: {
+              gte: startOfYear,
+            },
+          },
+        });
+
+        if (!alreadySent) {
+          await triggerAutomationCampaign(rule, patient, defaultAdmin.id);
+        }
+      }
+    }
   }
 }
 

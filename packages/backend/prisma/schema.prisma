@@ -123,7 +123,7 @@ model AutomationRule {
 
 model Setting {
   id                   String   @id @default("global")
-  clinicName           String   @default("SmileCare Dental Practice")
+  clinicName           String   @default("Macdent Dental Surgery")
   clinicPhone          String   @default("+263771234567")
   clinicAddress        String   @default("123 Samora Machel Ave, Harare")
   clinicLogo           String?

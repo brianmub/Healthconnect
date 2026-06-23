@@ -33,6 +33,7 @@ const TRIGGERS = [
   { value: 'POST_APPOINTMENT_FOLLOWUP', label: 'Post Appointment Care Follow-up' },
   { value: 'MISSED_APPOINTMENT', label: 'Missed Appointment alert' },
   { value: 'RECALL_REMINDER', label: '6-Month Recall Reminder' },
+  { value: 'BIRTHDAY', label: 'Happy Birthday Greeting' },
 ];
 
 const CHANNELS = [
@@ -93,7 +94,8 @@ export default function Automation() {
   const getPreviewSentence = () => {
     const offsetNum = parseInt(watchOffset.toString(), 10) || 0;
     const absOffset = Math.abs(offsetNum);
-    const timing = offsetNum === 0 
+    
+    let timing = offsetNum === 0 
       ? 'immediately upon'
       : offsetNum < 0
       ? `${absOffset} hours before`
@@ -102,11 +104,16 @@ export default function Automation() {
     let triggerName = 'the appointment';
     if (watchTrigger === 'RECALL_REMINDER') triggerName = '6 months without visits';
     if (watchTrigger === 'MISSED_APPOINTMENT') triggerName = 'appointment missed';
+    if (watchTrigger === 'BIRTHDAY') {
+      triggerName = "patient's birthday";
+      timing = "on";
+    }
 
     const templateName = selectedTemplate ? `"${selectedTemplate.name}"` : '[select template]';
 
     return `This rule will send: ${templateName} via ${watchChannel} ${timing} ${triggerName}.`;
   };
+
 
   // Mutations
   const createMutation = useMutation({

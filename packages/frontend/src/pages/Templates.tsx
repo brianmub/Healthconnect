@@ -86,7 +86,7 @@ export default function Templates() {
       .replace(/\{\{lastName\}\}/g, 'Moyo')
       .replace(/\{\{appointmentDate\}\}/g, formatSampleDate())
       .replace(/\{\{appointmentTime\}\}/g, '09:30 AM')
-      .replace(/\{\{clinicName\}\}/g, 'SmileCare Dental Practice')
+      .replace(/\{\{clinicName\}\}/g, 'Macdent Dental Surgery')
       .replace(/\{\{clinicPhone\}\}/g, '+263771234567');
   };
 
