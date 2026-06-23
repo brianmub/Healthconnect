@@ -48,8 +48,8 @@ export class MessagingService {
       if (settings.smsLocalhostApiKey)   process.env.SMS_LOCALHOST_API_KEY   = settings.smsLocalhostApiKey;
       if (settings.smsLocalhostSenderId) process.env.SMS_LOCALHOST_SENDER_ID = settings.smsLocalhostSenderId;
 
-      // Auto-detect provider: if SMS Localhost key is saved in DB, activate it
-      if (settings.smsLocalhostApiKey && !process.env.SMS_PROVIDER) {
+      // Activate provider: if SMS Localhost key is saved in DB, prioritize and activate it
+      if (settings.smsLocalhostApiKey) {
         process.env.SMS_PROVIDER = 'smsLocalhost';
       }
 
@@ -62,8 +62,8 @@ export class MessagingService {
       if (settings.metaWhatsappPhoneId) process.env.META_WHATSAPP_PHONE_ID = settings.metaWhatsappPhoneId;
       if (settings.metaWhatsappToken)   process.env.META_WHATSAPP_TOKEN   = settings.metaWhatsappToken;
 
-      // Auto-detect WhatsApp provider: if Meta credentials exist in DB settings, activate it
-      if (settings.metaWhatsappPhoneId && !process.env.WHATSAPP_PROVIDER) {
+      // Activate WhatsApp provider: if Meta credentials exist in DB settings, prioritize and activate it
+      if (settings.metaWhatsappPhoneId) {
         process.env.WHATSAPP_PROVIDER = 'meta';
       }
     } catch (err) {
