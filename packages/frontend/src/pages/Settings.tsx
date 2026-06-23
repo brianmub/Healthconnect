@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Copy,
   Check,
-  Info
+  Info,
+  Edit2,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../store/authStore';
@@ -34,6 +36,10 @@ export default function Settings() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [providerFilter, setProviderFilter] = useState('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  // User role editing states
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingUserRole, setEditingUserRole] = useState<'ADMIN' | 'STAFF'>('STAFF');
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -96,6 +102,22 @@ export default function Settings() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.error || 'Failed to create user account.');
+    },
+  });
+
+  // Update user role mutation
+  const updateUserRoleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: 'ADMIN' | 'STAFF' }) => {
+      const { data } = await api.put(`/api/settings/users/${id}/role`, { role });
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('User role updated successfully.');
+      setEditingUserId(null);
+      queryClient.invalidateQueries({ queryKey: ['settings', 'users'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to update user role.');
     },
   });
 
@@ -382,22 +404,77 @@ export default function Settings() {
                 </div>
               ) : (
                 <div className="divide-y divide-slate-800">
-                  {usersList?.map((u: any) => (
-                    <div key={u.email} className="p-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-xs font-bold text-slate-400">
-                          {u.name.substring(0, 2).toUpperCase()}
+                  {usersList?.map((u: any) => {
+                    const isEditing = editingUserId === u.id;
+                    const isCurrentUser = u.id === user?.id;
+
+                    return (
+                      <div key={u.email} className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700 text-xs font-bold text-slate-400">
+                            {u.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-semibold text-slate-200 text-xs block">{u.name}</span>
+                            <span className="text-[10px] text-slate-500">{u.email}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-semibold text-slate-200 text-xs block">{u.name}</span>
-                          <span className="text-[10px] text-slate-500">{u.email}</span>
+                        
+                        <div className="flex items-center gap-2">
+                          {isEditing ? (
+                            <div className="flex items-center gap-1.5 animate-fade-in">
+                              <select
+                                value={editingUserRole}
+                                onChange={(e) => setEditingUserRole(e.target.value as 'ADMIN' | 'STAFF')}
+                                className="bg-slate-900 border border-slate-800 text-slate-100 text-xs rounded-lg px-2 py-1 outline-none focus:border-primary-500 cursor-pointer"
+                              >
+                                <option value="STAFF">STAFF</option>
+                                <option value="ADMIN">ADMIN</option>
+                              </select>
+                              <button
+                                onClick={() => updateUserRoleMutation.mutate({ id: u.id, role: editingUserRole })}
+                                disabled={updateUserRoleMutation.isPending}
+                                className="p-1 rounded bg-success-500/20 text-success-400 hover:bg-success-500/30 border border-success-500/30 transition-colors flex items-center justify-center"
+                                title="Save"
+                              >
+                                {updateUserRoleMutation.isPending && editingUserId === u.id ? (
+                                  <Spinner className="w-3.5 h-3.5" />
+                                ) : (
+                                  <Check className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setEditingUserId(null)}
+                                disabled={updateUserRoleMutation.isPending}
+                                className="p-1 rounded bg-slate-800 text-slate-400 hover:bg-slate-705 border border-slate-700 transition-colors flex items-center justify-center"
+                                title="Cancel"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group/role">
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                                <Shield className="h-3.5 w-3.5 text-primary-500" /> {u.role}
+                              </span>
+                              {!isCurrentUser && (
+                                <button
+                                  onClick={() => {
+                                    setEditingUserId(u.id);
+                                    setEditingUserRole(u.role);
+                                  }}
+                                  className="p-1 rounded bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-850 opacity-0 group-hover/role:opacity-100 transition-all focus:opacity-100 flex items-center justify-center"
+                                  title="Edit Role"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                        <Shield className="h-3.5 w-3.5 text-primary-500" /> {u.role}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Card>

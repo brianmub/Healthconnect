@@ -8,7 +8,7 @@ import {
   getSmsBalance,
   getSmsLogs,
 } from '../controllers/settingsController';
-import { getUsers, createUser } from '../controllers/userController';
+import { getUsers, createUser, updateUserRole } from '../controllers/userController';
 
 const router = Router();
 
@@ -24,6 +24,7 @@ router.post('/whatsapp/test', testWhatsapp);
 // User accounts management - ADMIN role only
 router.get('/users', requireRole(['ADMIN']), getUsers);
 router.post('/users', requireRole(['ADMIN']), createUser);
+router.put('/users/:id/role', requireRole(['ADMIN']), updateUserRole);
 
 export default router;
 
