@@ -32,6 +32,10 @@ const patientSchema = zod.object({
   whatsapp: zod.string().optional().or(zod.literal('')),
   dateOfBirth: zod.string().optional().or(zod.literal('')),
   tags: zod.string().optional(), // Comma-separated tags
+  gender: zod.string().optional().or(zod.literal('')),
+  title: zod.string().optional().or(zod.literal('')),
+  patientCategory: zod.string().optional().or(zod.literal('')),
+  paymentMethod: zod.string().optional().or(zod.literal('')),
 });
 
 type PatientFormInputs = zod.infer<typeof patientSchema>;
@@ -200,6 +204,10 @@ export default function Patients() {
     setEditValue('whatsapp', patient.whatsapp || '');
     setEditValue('dateOfBirth', patient.dateOfBirth ? patient.dateOfBirth.split('T')[0] : '');
     setEditValue('tags', patient.tags?.map((t: any) => t.name).join(', ') || '');
+    setEditValue('gender', patient.gender || '');
+    setEditValue('title', patient.title || '');
+    setEditValue('patientCategory', patient.patientCategory || '');
+    setEditValue('paymentMethod', patient.paymentMethod || '');
   };
 
   const handleCreateSubmit = (data: PatientFormInputs) => {
@@ -503,11 +511,61 @@ export default function Patients() {
             <Input label="First Name" error={errorsAdd.firstName?.message} {...registerAdd('firstName')} />
             <Input label="Last Name" error={errorsAdd.lastName?.message} {...registerAdd('lastName')} />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Title"
+              options={[
+                { value: '', label: 'Select Title...' },
+                { value: 'Prof', label: 'Prof' },
+                { value: 'Dr', label: 'Dr' },
+                { value: 'Mr', label: 'Mr' },
+                { value: 'Mrs', label: 'Mrs' },
+                { value: 'Ms', label: 'Ms' }
+              ]}
+              error={errorsAdd.title?.message}
+              {...registerAdd('title')}
+            />
+            <Select
+              label="Gender"
+              options={[
+                { value: '', label: 'Select Gender...' },
+                { value: 'Male', label: 'Male' },
+                { value: 'Female', label: 'Female' }
+              ]}
+              error={errorsAdd.gender?.message}
+              {...registerAdd('gender')}
+            />
+          </div>
           <Input label="Phone Number (e.g. +26377...)" error={errorsAdd.phone?.message} {...registerAdd('phone')} />
           <Input label="WhatsApp Number (Optional)" error={errorsAdd.whatsapp?.message} {...registerAdd('whatsapp')} />
           <Input label="Email Address (Optional)" error={errorsAdd.email?.message} {...registerAdd('email')} />
-          <Input label="Date of Birth" type="date" error={errorsAdd.dateOfBirth?.message} {...registerAdd('dateOfBirth')} />
-          <Input label="Patient Tags (Comma separated, e.g. VIP, recall)" error={errorsAdd.tags?.message} {...registerAdd('tags')} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Date of Birth" type="date" error={errorsAdd.dateOfBirth?.message} {...registerAdd('dateOfBirth')} />
+            <Select
+              label="Patient Category"
+              options={[
+                { value: '', label: 'Select Category...' },
+                { value: 'Medical Aid', label: 'Medical Aid' },
+                { value: 'Cash', label: 'Cash' }
+              ]}
+              error={errorsAdd.patientCategory?.message}
+              {...registerAdd('patientCategory')}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Method of Payment"
+              options={[
+                { value: '', label: 'Select Payment Method...' },
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Ecocash', label: 'Ecocash' },
+                { value: 'Swipe', label: 'Swipe' }
+              ]}
+              error={errorsAdd.paymentMethod?.message}
+              {...registerAdd('paymentMethod')}
+            />
+            <Input label="Patient Tags (Comma separated)" error={errorsAdd.tags?.message} {...registerAdd('tags')} />
+          </div>
           
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
             <Button variant="secondary" type="button" onClick={() => setAddModalOpen(false)}>
@@ -527,11 +585,61 @@ export default function Patients() {
             <Input label="First Name" error={errorsEdit.firstName?.message} {...registerEdit('firstName')} />
             <Input label="Last Name" error={errorsEdit.lastName?.message} {...registerEdit('lastName')} />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Title"
+              options={[
+                { value: '', label: 'Select Title...' },
+                { value: 'Prof', label: 'Prof' },
+                { value: 'Dr', label: 'Dr' },
+                { value: 'Mr', label: 'Mr' },
+                { value: 'Mrs', label: 'Mrs' },
+                { value: 'Ms', label: 'Ms' }
+              ]}
+              error={errorsEdit.title?.message}
+              {...registerEdit('title')}
+            />
+            <Select
+              label="Gender"
+              options={[
+                { value: '', label: 'Select Gender...' },
+                { value: 'Male', label: 'Male' },
+                { value: 'Female', label: 'Female' }
+              ]}
+              error={errorsEdit.gender?.message}
+              {...registerEdit('gender')}
+            />
+          </div>
           <Input label="Phone Number" error={errorsEdit.phone?.message} {...registerEdit('phone')} />
           <Input label="WhatsApp Number (Optional)" error={errorsEdit.whatsapp?.message} {...registerEdit('whatsapp')} />
           <Input label="Email Address (Optional)" error={errorsEdit.email?.message} {...registerEdit('email')} />
-          <Input label="Date of Birth" type="date" error={errorsEdit.dateOfBirth?.message} {...registerEdit('dateOfBirth')} />
-          <Input label="Patient Tags (Comma separated)" error={errorsEdit.tags?.message} {...registerEdit('tags')} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Date of Birth" type="date" error={errorsEdit.dateOfBirth?.message} {...registerEdit('dateOfBirth')} />
+            <Select
+              label="Patient Category"
+              options={[
+                { value: '', label: 'Select Category...' },
+                { value: 'Medical Aid', label: 'Medical Aid' },
+                { value: 'Cash', label: 'Cash' }
+              ]}
+              error={errorsEdit.patientCategory?.message}
+              {...registerEdit('patientCategory')}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Select
+              label="Method of Payment"
+              options={[
+                { value: '', label: 'Select Payment Method...' },
+                { value: 'Cash', label: 'Cash' },
+                { value: 'Ecocash', label: 'Ecocash' },
+                { value: 'Swipe', label: 'Swipe' }
+              ]}
+              error={errorsEdit.paymentMethod?.message}
+              {...registerEdit('paymentMethod')}
+            />
+            <Input label="Patient Tags (Comma separated)" error={errorsEdit.tags?.message} {...registerEdit('tags')} />
+          </div>
           
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
             <Button variant="secondary" type="button" onClick={() => setEditPatient(null)}>

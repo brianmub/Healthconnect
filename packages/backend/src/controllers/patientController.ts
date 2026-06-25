@@ -110,7 +110,7 @@ export async function getPatientById(req: Request, res: Response) {
 }
 
 export async function createPatient(req: Request, res: Response) {
-  const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags } = req.body;
+  const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags, gender, title, patientCategory, paymentMethod } = req.body;
 
   const normalizedPhone = validateAndNormalizePhone(phone);
   if (!normalizedPhone) {
@@ -131,6 +131,10 @@ export async function createPatient(req: Request, res: Response) {
         whatsapp: whatsapp ? validateAndNormalizePhone(whatsapp) : null,
         email: email || null,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        gender: gender || null,
+        title: title || null,
+        patientCategory: patientCategory || null,
+        paymentMethod: paymentMethod || null,
       },
     });
 
@@ -162,7 +166,7 @@ export async function createPatient(req: Request, res: Response) {
 
 export async function updatePatient(req: Request, res: Response) {
   const { id } = req.params;
-  const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags, optedOut } = req.body;
+  const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags, optedOut, gender, title, patientCategory, paymentMethod } = req.body;
 
   let normalizedPhone: string | undefined;
   if (phone) {
@@ -194,6 +198,10 @@ export async function updatePatient(req: Request, res: Response) {
         email: email !== undefined ? email : undefined,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : dateOfBirth === null ? null : undefined,
         optedOut: optedOut !== undefined ? optedOut : undefined,
+        gender: gender !== undefined ? gender : undefined,
+        title: title !== undefined ? title : undefined,
+        patientCategory: patientCategory !== undefined ? patientCategory : undefined,
+        paymentMethod: paymentMethod !== undefined ? paymentMethod : undefined,
       },
     });
 
@@ -264,10 +272,10 @@ export async function exportPatients(req: Request, res: Response) {
       orderBy: { lastName: 'asc' },
     });
 
-    let csvContent = 'firstName,lastName,phone,email,whatsapp,optedOut,tags\n';
+    let csvContent = 'firstName,lastName,phone,email,whatsapp,gender,title,patientCategory,paymentMethod,optedOut,tags\n';
     for (const p of patients) {
       const tagStr = p.tags.map(t => t.name).join(';');
-      csvContent += `"${p.firstName}","${p.lastName}","${p.phone}","${p.email || ''}","${p.whatsapp || ''}",${p.optedOut},"${tagStr}"\n`;
+      csvContent += `"${p.firstName}","${p.lastName}","${p.phone}","${p.email || ''}","${p.whatsapp || ''}","${p.gender || ''}","${p.title || ''}","${p.patientCategory || ''}","${p.paymentMethod || ''}",${p.optedOut},"${tagStr}"\n`;
     }
 
     res.setHeader('Content-Type', 'text/csv');
@@ -299,12 +307,16 @@ export async function importPatients(req: Request, res: Response) {
     .on('data', (data) => results.push(data))
     .on('end', async () => {
       for (const row of results) {
-        // Expected headers: firstName, lastName, phone, email, tags
+        // Expected headers: firstName, lastName, phone, email, tags, gender, title, patientCategory, paymentMethod
         const firstName = row.firstName || row.FirstName || '';
         const lastName = row.lastName || row.LastName || '';
         const rawPhone = row.phone || row.Phone || '';
         const email = row.email || row.Email || null;
         const tagsRaw = row.tags || row.Tags || '';
+        const gender = row.gender || row.Gender || null;
+        const title = row.title || row.Title || null;
+        const patientCategory = row.patientCategory || row.PatientCategory || null;
+        const paymentMethod = row.paymentMethod || row.PaymentMethod || null;
 
         if (!firstName || !lastName || !rawPhone) {
           errorCount++;
@@ -332,6 +344,10 @@ export async function importPatients(req: Request, res: Response) {
               lastName,
               phone: normalizedPhone,
               email: email || null,
+              gender,
+              title,
+              patientCategory,
+              paymentMethod,
             },
           });
 

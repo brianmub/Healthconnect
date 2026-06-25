@@ -28,6 +28,10 @@ model Patient {
   email             String?
   dateOfBirth       DateTime?
   optedOut          Boolean            @default(false)
+  gender            String?
+  title             String?
+  patientCategory   String?
+  paymentMethod     String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   appointments      Appointment[]

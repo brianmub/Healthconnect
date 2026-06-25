@@ -87,7 +87,15 @@ export default function Templates() {
       .replace(/\{\{appointmentDate\}\}/g, formatSampleDate())
       .replace(/\{\{appointmentTime\}\}/g, '09:30 AM')
       .replace(/\{\{clinicName\}\}/g, 'Macdent Dental Surgery')
-      .replace(/\{\{clinicPhone\}\}/g, '+263771234567');
+      .replace(/\{\{clinicPhone\}\}/g, '+263771234567')
+      .replace(/\{\{title\}\}/g, 'Dr.')
+      .replace(/\{\{gender\}\}/g, 'Male')
+      .replace(/\{\{patientCategory\}\}/g, 'Medical Aid')
+      .replace(/\{\{paymentMethod\}\}/g, 'Swipe')
+      .replace(/\{\{phone\}\}/g, '+263771234567')
+      .replace(/\{\{email\}\}/g, 'tinashe@example.com')
+      .replace(/\{\{whatsapp\}\}/g, '+263771234567')
+      .replace(/\{\{dateOfBirth\}\}/g, '1990-05-15');
   };
 
   const formatSampleDate = () => {
@@ -267,7 +275,7 @@ export default function Templates() {
             <div>
               <span className="block text-xs font-semibold text-slate-400 mb-1">Insert Variable</span>
               <div className="flex flex-wrap gap-1">
-                {['firstName', 'lastName', 'appointmentDate', 'appointmentTime', 'clinicName', 'clinicPhone'].map((v) => (
+                {['firstName', 'lastName', 'title', 'gender', 'patientCategory', 'paymentMethod', 'phone', 'email', 'whatsapp', 'dateOfBirth', 'appointmentDate', 'appointmentTime', 'clinicName', 'clinicPhone'].map((v) => (
                   <button
                     key={v}
                     type="button"

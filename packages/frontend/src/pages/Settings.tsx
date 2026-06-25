@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
-import { Card, Badge, Button, Input, Select, Spinner } from '../components/ui';
+import { Card, Badge, Button, Input, Select, Spinner, Modal } from '../components/ui';
 import { useForm } from 'react-hook-form';
 import {
   Building,
@@ -18,7 +18,8 @@ import {
   Check,
   Info,
   Edit2,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '../store/authStore';
@@ -40,6 +41,11 @@ export default function Settings() {
   // User role editing states
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingUserRole, setEditingUserRole] = useState<'ADMIN' | 'STAFF'>('STAFF');
+
+  // User password editing states
+  const [changePasswordUser, setChangePasswordUser] = useState<any | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleCopyId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -118,6 +124,24 @@ export default function Settings() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.error || 'Failed to update user role.');
+    },
+  });
+
+  // Update user password mutation
+  const updateUserPasswordMutation = useMutation({
+    mutationFn: async ({ id, password }: { id: string; password: string }) => {
+      const { data } = await api.put(`/api/settings/users/${id}/password`, { password });
+      return data;
+    },
+    onSuccess: () => {
+      toast.success('User password updated successfully.');
+      setChangePasswordUser(null);
+      setNewPassword('');
+      setConfirmPassword('');
+      queryClient.invalidateQueries({ queryKey: ['settings', 'users'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to update user password.');
     },
   });
 
@@ -458,16 +482,29 @@ export default function Settings() {
                                 <Shield className="h-3.5 w-3.5 text-primary-500" /> {u.role}
                               </span>
                               {!isCurrentUser && (
-                                <button
-                                  onClick={() => {
-                                    setEditingUserId(u.id);
-                                    setEditingUserRole(u.role);
-                                  }}
-                                  className="p-1 rounded bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-850 opacity-0 group-hover/role:opacity-100 transition-all focus:opacity-100 flex items-center justify-center"
-                                  title="Edit Role"
-                                >
-                                  <Edit2 className="h-3.5 w-3.5" />
-                                </button>
+                                <div className="flex items-center gap-1 opacity-0 group-hover/role:opacity-100 transition-all focus-within:opacity-100">
+                                  <button
+                                    onClick={() => {
+                                      setEditingUserId(u.id);
+                                      setEditingUserRole(u.role);
+                                    }}
+                                    className="p-1 rounded bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-850 flex items-center justify-center"
+                                    title="Edit Role"
+                                  >
+                                    <Edit2 className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setChangePasswordUser(u);
+                                      setNewPassword('');
+                                      setConfirmPassword('');
+                                    }}
+                                    className="p-1 rounded bg-slate-900/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-slate-850 flex items-center justify-center"
+                                    title="Change Password"
+                                  >
+                                    <Lock className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )}
@@ -705,6 +742,53 @@ export default function Settings() {
           )}
         </div>
       </div>
+      {/* Change Password Modal */}
+      <Modal
+        isOpen={changePasswordUser !== null}
+        onClose={() => setChangePasswordUser(null)}
+        title={`Change Password for ${changePasswordUser?.name}`}
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (newPassword !== confirmPassword) {
+              toast.error('Passwords do not match.');
+              return;
+            }
+            if (newPassword.length < 6) {
+              toast.error('Password must be at least 6 characters long.');
+              return;
+            }
+            updateUserPasswordMutation.mutate({ id: changePasswordUser.id, password: newPassword });
+          }}
+          className="space-y-4"
+        >
+          <Input
+            label="New Password"
+            type="password"
+            placeholder="••••••••"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            required
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+            <Button variant="secondary" type="button" onClick={() => setChangePasswordUser(null)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" isLoading={updateUserPasswordMutation.isPending}>
+              Update Password
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

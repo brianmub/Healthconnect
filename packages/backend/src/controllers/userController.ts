@@ -103,3 +103,29 @@ export async function updateUserRole(req: AuthRequest, res: Response) {
     res.status(500).json({ error: 'Failed to update user role' });
   }
 }
+
+export async function updateUserPassword(req: Request, res: Response) {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    res.json({ message: 'User password updated successfully' });
+  } catch (err) {
+    console.error('updateUserPassword error:', err);
+    res.status(500).json({ error: 'Failed to update user password' });
+  }
+}

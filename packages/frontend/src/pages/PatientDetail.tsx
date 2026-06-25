@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Card, Badge, Button, Spinner, Input, Textarea, Select } from '../components/ui';
-import { ArrowLeft, Calendar, Mail, Phone, AlertCircle, Clock, Tag, Cake, FileText, Activity, CreditCard, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Mail, Phone, AlertCircle, Clock, Tag, Cake, FileText, Activity, CreditCard, Plus, Trash2, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import InvoiceGenerator from '../components/billing/InvoiceGenerator';
@@ -89,11 +89,16 @@ export default function PatientDetail() {
           {patient.firstName[0]}{patient.lastName[0]}
         </div>
         <div className="flex-1 text-center md:text-left space-y-2">
-          <h2 className="text-2xl font-bold text-slate-200">{patient.firstName} {patient.lastName}</h2>
+          <h2 className="text-2xl font-bold text-slate-200">
+            {patient.title ? `${patient.title} ` : ''}{patient.firstName} {patient.lastName}
+          </h2>
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-slate-400">
             <span className="flex items-center gap-1"><Phone className="h-4 w-4" /> {patient.phone}</span>
             <span className="flex items-center gap-1"><Mail className="h-4 w-4" /> {patient.email || 'No email'}</span>
             <span className="flex items-center gap-1"><Cake className="h-4 w-4" /> {patient.dateOfBirth ? format(new Date(patient.dateOfBirth), 'MMM d, yyyy') : 'No DOB'}</span>
+            {patient.gender && <span className="flex items-center gap-1"><User className="h-4 w-4" /> {patient.gender}</span>}
+            {patient.patientCategory && <span className="flex items-center gap-1"><Tag className="h-4 w-4" /> Category: {patient.patientCategory}</span>}
+            {patient.paymentMethod && <span className="flex items-center gap-1"><CreditCard className="h-4 w-4" /> Payment: {patient.paymentMethod}</span>}
           </div>
           <div className="flex flex-wrap gap-1 justify-center md:justify-start mt-2">
             {patient.tags?.map((t: any) => (

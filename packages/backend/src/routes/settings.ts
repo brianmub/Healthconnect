@@ -8,7 +8,7 @@ import {
   getSmsBalance,
   getSmsLogs,
 } from '../controllers/settingsController';
-import { getUsers, createUser, updateUserRole } from '../controllers/userController';
+import { getUsers, createUser, updateUserRole, updateUserPassword } from '../controllers/userController';
 
 const router = Router();
 
@@ -25,6 +25,7 @@ router.post('/whatsapp/test', testWhatsapp);
 router.get('/users', requireRole(['ADMIN']), getUsers);
 router.post('/users', requireRole(['ADMIN']), createUser);
 router.put('/users/:id/role', requireRole(['ADMIN']), updateUserRole);
+router.put('/users/:id/password', requireRole(['ADMIN']), updateUserPassword);
 
 export default router;
 

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 
 // ==========================================
 // 1. Spinner Component
@@ -57,17 +58,32 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, className = '', type = 'text', ...props }, ref) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = type === 'password';
+    const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
+
     return (
       <div className="w-full">
         {label && <label className="block text-xs font-semibold text-slate-400 mb-1">{label}</label>}
-        <input
-          ref={ref}
-          type={type}
-          className={`glass-input w-full px-3 py-2 text-sm text-slate-100 rounded-lg outline-none transition-all duration-200 ${
-            error ? 'border-danger-500 focus:border-danger-500' : 'border-slate-800 focus:border-primary-500'
-          } ${className}`}
-          {...props}
-        />
+        <div className="relative">
+          <input
+            ref={ref}
+            type={inputType}
+            className={`glass-input w-full px-3 py-2 pr-10 text-sm text-slate-100 rounded-lg outline-none transition-all duration-200 ${
+              error ? 'border-danger-500 focus:border-danger-500' : 'border-slate-800 focus:border-primary-500'
+            } ${className}`}
+            {...props}
+          />
+          {isPassword && (
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 focus:outline-none transition-colors"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
         {error && <span className="text-xs text-danger-500 mt-1 block">{error}</span>}
       </div>
     );
