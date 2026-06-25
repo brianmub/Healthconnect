@@ -109,11 +109,6 @@ export default function Login() {
           </form>
         </Card>
 
-        {/* Footnote links */}
-        <div className="text-center mt-6 text-xs text-slate-500">
-          <p>Demo Admin: admin@healthconnect.com | Admin1234!</p>
-          <p className="mt-1">Demo Staff: staff@healthconnect.com | Staff1234!</p>
-        </div>
       </div>
     </div>
   );

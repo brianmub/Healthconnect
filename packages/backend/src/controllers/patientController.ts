@@ -112,15 +112,36 @@ export async function getPatientById(req: Request, res: Response) {
 export async function createPatient(req: Request, res: Response) {
   const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags, gender, title, patientCategory, paymentMethod } = req.body;
 
-  const normalizedPhone = validateAndNormalizePhone(phone);
-  if (!normalizedPhone) {
-    return res.status(400).json({ error: 'Invalid phone number format' });
-  }
-
   try {
+    const settings = await prisma.setting.findUnique({ where: { id: 'global' } });
+    const defaultCountry = (settings?.defaultCountryCode || 'ZW') as any;
+
+    const normalizedPhone = validateAndNormalizePhone(phone, defaultCountry);
+    if (!normalizedPhone) {
+      return res.status(400).json({ error: 'Invalid phone number format' });
+    }
+
     const existing = await prisma.patient.findUnique({ where: { phone: normalizedPhone } });
     if (existing) {
       return res.status(400).json({ error: 'A patient with this phone number already exists' });
+    }
+
+    let normalizedWhatsapp: string | null = null;
+    if (whatsapp) {
+      const validated = validateAndNormalizePhone(whatsapp, defaultCountry);
+      if (!validated) {
+        return res.status(400).json({ error: 'Invalid WhatsApp phone number format' });
+      }
+      normalizedWhatsapp = validated;
+    }
+
+    let parsedDateOfBirth: Date | null = null;
+    if (dateOfBirth) {
+      const d = new Date(dateOfBirth);
+      if (isNaN(d.getTime())) {
+        return res.status(400).json({ error: 'Invalid date of birth' });
+      }
+      parsedDateOfBirth = d;
     }
 
     const patient = await prisma.patient.create({
@@ -128,9 +149,9 @@ export async function createPatient(req: Request, res: Response) {
         firstName,
         lastName,
         phone: normalizedPhone,
-        whatsapp: whatsapp ? validateAndNormalizePhone(whatsapp) : null,
+        whatsapp: normalizedWhatsapp,
         email: email || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        dateOfBirth: parsedDateOfBirth,
         gender: gender || null,
         title: title || null,
         patientCategory: patientCategory || null,
@@ -140,11 +161,12 @@ export async function createPatient(req: Request, res: Response) {
 
     // Create tags if provided
     if (tags && Array.isArray(tags)) {
+      const uniqueTags = Array.from(new Set(tags.map((t: string) => t.trim().toLowerCase()))).filter(Boolean);
       await Promise.all(
-        tags.map((tagName: string) =>
+        uniqueTags.map((tagName: string) =>
           prisma.patientTag.create({
             data: {
-              name: tagName.trim().toLowerCase(),
+              name: tagName,
               patientId: patient.id,
             },
           })
@@ -168,22 +190,51 @@ export async function updatePatient(req: Request, res: Response) {
   const { id } = req.params;
   const { firstName, lastName, phone, email, whatsapp, dateOfBirth, tags, optedOut, gender, title, patientCategory, paymentMethod } = req.body;
 
-  let normalizedPhone: string | undefined;
-  if (phone) {
-    const validated = validateAndNormalizePhone(phone);
-    if (!validated) {
-      return res.status(400).json({ error: 'Invalid phone number format' });
-    }
-    normalizedPhone = validated;
-  }
-
   try {
+    const settings = await prisma.setting.findUnique({ where: { id: 'global' } });
+    const defaultCountry = (settings?.defaultCountryCode || 'ZW') as any;
+
+    let normalizedPhone: string | undefined;
+    if (phone) {
+      const validated = validateAndNormalizePhone(phone, defaultCountry);
+      if (!validated) {
+        return res.status(400).json({ error: 'Invalid phone number format' });
+      }
+      normalizedPhone = validated;
+    }
+
     if (normalizedPhone) {
       const existing = await prisma.patient.findFirst({
         where: { phone: normalizedPhone, NOT: { id } },
       });
       if (existing) {
         return res.status(400).json({ error: 'A patient with this phone number already exists' });
+      }
+    }
+
+    let normalizedWhatsapp: string | null | undefined = undefined;
+    if (whatsapp !== undefined) {
+      if (whatsapp === null || whatsapp === '') {
+        normalizedWhatsapp = null;
+      } else {
+        const validated = validateAndNormalizePhone(whatsapp, defaultCountry);
+        if (!validated) {
+          return res.status(400).json({ error: 'Invalid WhatsApp phone number format' });
+        }
+        normalizedWhatsapp = validated;
+      }
+    }
+
+    let parsedDateOfBirth: Date | null | undefined = undefined;
+    if (dateOfBirth !== undefined) {
+      if (dateOfBirth === null || dateOfBirth === '') {
+        parsedDateOfBirth = null;
+      } else {
+        const d = new Date(dateOfBirth);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({ error: 'Invalid date of birth' });
+        }
+        parsedDateOfBirth = d;
       }
     }
 
@@ -194,27 +245,28 @@ export async function updatePatient(req: Request, res: Response) {
         firstName,
         lastName,
         phone: normalizedPhone,
-        whatsapp: whatsapp ? validateAndNormalizePhone(whatsapp) : whatsapp === null ? null : undefined,
-        email: email !== undefined ? email : undefined,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : dateOfBirth === null ? null : undefined,
+        whatsapp: normalizedWhatsapp,
+        email: email !== undefined ? (email || null) : undefined,
+        dateOfBirth: parsedDateOfBirth,
         optedOut: optedOut !== undefined ? optedOut : undefined,
-        gender: gender !== undefined ? gender : undefined,
-        title: title !== undefined ? title : undefined,
-        patientCategory: patientCategory !== undefined ? patientCategory : undefined,
-        paymentMethod: paymentMethod !== undefined ? paymentMethod : undefined,
+        gender: gender !== undefined ? (gender || null) : undefined,
+        title: title !== undefined ? (title || null) : undefined,
+        patientCategory: patientCategory !== undefined ? (patientCategory || null) : undefined,
+        paymentMethod: paymentMethod !== undefined ? (paymentMethod || null) : undefined,
       },
     });
 
     // Sync tags if provided
     if (tags && Array.isArray(tags)) {
+      const uniqueTags = Array.from(new Set(tags.map((t: string) => t.trim().toLowerCase()))).filter(Boolean);
       // delete old tags
       await prisma.patientTag.deleteMany({ where: { patientId: id } });
       // add new tags
       await Promise.all(
-        tags.map((tagName: string) =>
+        uniqueTags.map((tagName: string) =>
           prisma.patientTag.create({
             data: {
-              name: tagName.trim().toLowerCase(),
+              name: tagName,
               patientId: id,
             },
           })
